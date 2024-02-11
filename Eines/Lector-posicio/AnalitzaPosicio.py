@@ -34,8 +34,6 @@ def ObreImatge(image_path):
 
     return img_thresh 
 
-
-
 # Function to extract just the field from the image
 # Input: image_path: path to the image file
 # Output: image: image without references
@@ -144,8 +142,6 @@ def main():
     image = ObreImatge('Eines/LEctor-posicio/Data/TestImage.jpg')
     image = ObteCamp(image)
     TrobaPosicioFlor(image)
-
-
 
 if __name__ == "__main__":
     main()
