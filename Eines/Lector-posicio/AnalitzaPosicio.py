@@ -1,7 +1,9 @@
 import cv2
 import datetime
+import math
 
 DEBUG = True
+REDUCCIO_CAMP_REFERENCIES = 12
 
 # Function to open an image file and perform global thresholding
 # Input: image_path: path to the image file
@@ -34,83 +36,82 @@ def ObreImatge(image_path):
 
 
 
-# Function to calculate the field size, based on the position of the first and last white pixel
+# Function to extract just the field from the image
 # Input: image_path: path to the image file
-# Output: (xmin, ymin, xmax, ymax): coordinates of the field
-def CalculaMidaCamp(image):
+# Output: image: image without references
+def ObteCamp(image):
+    # Find contours
+    contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
 
-    # Get the position of the first y white pixel
-    ymin = None
-    for y in range(image.shape[0]):
-        for x in range(image.shape[1]):   
-            if image[y, x] == 255:
-                ymin = y
-                break
-        if ymin is not None:
-            break
-    
-    # Draw a grey line to indicate the position of the first y white pixel
-    image[ymin, :] = 128
-    
-    # Get the position of the first x white pixel
-    xmin = None
-    for x in range(image.shape[1]):
-        for y in range(image.shape[0]):
-            if image[y, x] == 255:
-                xmin = x
-                break
-        if xmin is not None:
-            break
-    
-    # Draw a grey line to indicate the position of the first x white pixel
-    image[:, xmin] = 128
+    # Find the 4 contours delimiting the field
+    # Find centers
+    centers = []
+    for contour in contours:
+        M = cv2.moments(contour)
+        if M['m00'] != 0:
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])
+            centers.append((cx, cy))
+            cv2.circle(image, (cx, cy), 5, (255, 0, 0), -1)
 
-    # Get the position of the last y white pixel
-    ymax = None
-    for y in range(image.shape[0]-1, -1, -1):
-        for x in range(image.shape[1]):
-            if image[y, x] == 255:
-                ymax = y
-                break
-        if ymax is not None:
-            break
+    # Find the left up center 
+    distance_to_0 = [math.sqrt(x**2 + y**2) for (x, y) in centers]
+    left_up = centers[distance_to_0.index(min(distance_to_0))]
 
-    # Draw a grey line to indicate the position of the last y white pixel
-    image[ymax, :] = 128
+    # Find the right up center
+    distance_to_x = [math.sqrt((image.shape[1]-x)**2 + y**2) for (x, y) in centers]
+    right_up = centers[distance_to_x.index(min(distance_to_x))]
 
-    # Get the position of the last x white pixel
-    xmax = None
-    for x in range(image.shape[1]-1, -1, -1):
-        for y in range(image.shape[0]):
-            if image[y, x] == 255:
-                xmax = x
-                break
-        if xmax is not None:
-            break
+    # Find the left down center
+    distance_to_y = [math.sqrt(x**2 + (image.shape[0]-y)**2) for (x, y) in centers]
+    left_down = centers[distance_to_y.index(min(distance_to_y))]
 
-    # Draw a grey line to indicate the position of the last x white pixel
-    image[:, xmax] = 128    
-    
+    # Find the right down center
+    distance_to_xy = [math.sqrt((image.shape[1]-x)**2 + (image.shape[0]-y)**2) for (x, y) in centers]
+    right_down = centers[distance_to_xy.index(min(distance_to_xy))]
+  
     if DEBUG:
+        #Draw a gray circle on center of every reference
+        cv2.circle(image, (right_down), 5, (128, 128, 128), -1)
+        cv2.circle(image, (left_down), 5, (128, 128, 128), -1)
+        cv2.circle(image, (right_up), 5, (128, 128, 128), -1)
+        cv2.circle(image, (left_up), 5, (128, 128, 128), -1)
+        cv2.imshow('Image amb References', image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    # Calculate the field size
+    ymin = max(left_up[1], right_up[1]) + REDUCCIO_CAMP_REFERENCIES
+    ymax = min(left_down[1], right_down[1]) - REDUCCIO_CAMP_REFERENCIES
+    xmin = max(left_up[0], left_down[0]) + REDUCCIO_CAMP_REFERENCIES
+    xmax = min(right_up[0], right_down[0]) - REDUCCIO_CAMP_REFERENCIES
+  
+    if DEBUG:
+        # Draw a grey line for the field size
+        image[ymin, :] = 128
+        image[:, xmin] = 128
+        image[ymax, :] = 128
+        image[:, xmax] = 128    
         # Display the image with borders
         cv2.imshow('Image with borders', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    # Return field size
-    return (xmin, ymin, xmax, ymax)
-
-def TrobaPosicioFlor(image, field_size):
     # Crop the image to the field size
-    image = image[field_size[1]:field_size[3], field_size[0]:field_size[2]]
-    # Find contours
-    contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
+    image = image[(ymin+1):(ymax-1), (xmin+1):(xmax-1)] # +1 and -1 to avoid the grey lines
 
     if DEBUG:
         #Display the cropped image
-        cv2.imshow('Image cropped', image)
+        cv2.imshow('Cropped image', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+    # Return field size
+    return image
+
+def TrobaPosicioFlor(image):
+    # Find contours
+    contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
 
     # Find centers
     centers = []
@@ -140,9 +141,9 @@ def TrobaPosicioFlor(image, field_size):
 
 #Main function
 def main():
-    image = ObreImatge('Data/TestImage.jpg')
-    MidesCamp = CalculaMidaCamp(image)
-    TrobaPosicioFlor(image, MidesCamp)
+    image = ObreImatge('Eines/LEctor-posicio/Data/TestImage.jpg')
+    image = ObteCamp(image)
+    TrobaPosicioFlor(image)
 
 
 
