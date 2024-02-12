@@ -136,12 +136,32 @@ def TrobaPosicioFlor(image):
         timestamp = datetime.datetime.now().strftime('_%Y%m%d_%H%M%S')
         cv2.imwrite('Data/Output/ErrorReferences'+timestamp+'.jpg', image)
         return
+    
+    # Calculate the distance between the two centers
+    distance = math.sqrt((centers[0][0]-centers[1][0])**2 + (centers[0][1]-centers[1][1])**2)
+
+    # Get the coordinates of the middle point between the two centers
+    middle_point = ((centers[0][0]+centers[1][0])//2, (centers[0][1]+centers[1][1])//2)
+
+    if DEBUG:
+        # Draw a gray circle on the middle point
+        cv2.circle(image, middle_point, 5, (128, 128, 128), -1)
+        cv2.imshow('Image amb posició flor', image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    #Get the angle betwwen the line joining the two centers and the y axis
+    angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
+    return middle_point, distance, angle
 
 #Main function
 def main():
     image = ObreImatge('Eines/LEctor-posicio/Data/TestImage.jpg')
     image = ObteCamp(image)
-    TrobaPosicioFlor(image)
+    Posicio, Distancia, Angle = TrobaPosicioFlor(image)
+    print('Posició de la flor:', Posicio)
+    print('Distancia de la flor:', Distancia)
+    print('Angle de la flor:', Angle)
 
 if __name__ == "__main__":
     main()
