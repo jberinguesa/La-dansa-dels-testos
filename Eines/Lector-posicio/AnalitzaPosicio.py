@@ -1,6 +1,7 @@
 import cv2
 import datetime
 import math
+import numpy as np
 
 DEBUG = True
 REDUCCIO_CAMP_REFERENCIES = 12
@@ -24,13 +25,15 @@ def ObreImatge(image_path):
         cv2.destroyAllWindows()
 
     # Perform global thresholding
-    retval, img_thresh = cv2.threshold(image, 200, 255, cv2.THRESH_BINARY)
+    retval, img_thresh = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY)
 
     if DEBUG:
         # Display the thresholded image
         cv2.imshow('Thresholded image', img_thresh)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+    GuardaImatge(img_thresh, 'Eines/Lector-posicio/Data/Output/Thresholded')
 
     return img_thresh 
 
@@ -107,9 +110,21 @@ def ObteCamp(image):
     # Return field size
     return image
 
+# Function to save an image on file
+# Input: image: image to save
+#        filename: name of the file
+def GuardaImatge(image, filename):
+    # Save image on file, adding timestamp to the filename
+    timestamp = datetime.datetime.now().strftime('_%Y%m%d_%H%M%S')
+    if  not cv2.imwrite(filename
+                + timestamp
+                + '.jpg', image):
+        print('No s\'ha pogut guardar la imatge', filename)
+        return
+    
 def TrobaPosicioFlor(image):
     # Find contours
-    contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
+    contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
 
     # Find centers
     centers = []
@@ -124,7 +139,7 @@ def TrobaPosicioFlor(image):
     if DEBUG:
         #Draw a gray circle on every center
         for center in centers:
-            cv2.circle(image, center, 5, (128, 128, 128), -1)
+            cv2.circle(image, center, 10, (128, 128, 128), -1)
         cv2.imshow('Image amb References', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -132,10 +147,9 @@ def TrobaPosicioFlor(image):
     # If more than 2 centers are found, print an error message
     if len(centers) > 2:
         print('TrobaPosicioFlor: S\'han trobat més de 2 referències')
-                # Save image on file, adding timestamp to the filename
-        timestamp = datetime.datetime.now().strftime('_%Y%m%d_%H%M%S')
-        cv2.imwrite('Data/Output/ErrorReferences'+timestamp+'.jpg', image)
-        return
+        # Save image 
+        GuardaImatge(image, 'Eines/Lector-posicio/Data/Output/ErrorReferences')
+        return 0,0,0
     
     # Calculate the distance between the two centers
     distance = math.sqrt((centers[0][0]-centers[1][0])**2 + (centers[0][1]-centers[1][1])**2)
@@ -153,15 +167,18 @@ def TrobaPosicioFlor(image):
     #Get the angle betwwen the line joining the two centers and the y axis
     angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
     return middle_point, distance, angle
-
+    
 #Main function
 def main():
-    image = ObreImatge('Eines/LEctor-posicio/Data/TestImage.jpg')
-    image = ObteCamp(image)
+    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6330.jpg')
+    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6331.jpg')
+    image = ObreImatge('Eines/Lector-posicio/Data/IMG_6332.jpg')
+    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6334.jpg')
+    #image = ObteCamp(image)
     Posicio, Distancia, Angle = TrobaPosicioFlor(image)
     print('Posició de la flor:', Posicio)
-    print('Distancia de la flor:', Distancia)
-    print('Angle de la flor:', Angle)
+    print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
+    print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
 
 if __name__ == "__main__":
     main()
