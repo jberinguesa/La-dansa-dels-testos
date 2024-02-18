@@ -23,7 +23,7 @@ REPRODUCTION_SPEED = 10 #To speed up the reproduction
 
 scale = SCREEN_WIDTH / FIELD_WIDTH
 file = "GCODETest.gcode"
-svg_file = "Test4.svg"
+svg_file = "Recorregut2.svg"
 export_file = "DotTest.txt"
 
 from pygame.locals import (
@@ -39,13 +39,16 @@ from pygame.locals import (
 
 
 ################################# GCODE ############################################
-#Read a GCODE file
+
+# Read a GCODE file
+# Input: file_path: path to the GCODE file
 def read_gcode_file(file_path):
     try:
         with open(file_path, 'r') as file:
             gcode_data = file.read()
     except FileNotFoundError:
         print("read_gcode_file: GCODE file not found.")
+        return
 
     #Filter just G0 and G1 commands
     gcode_data = gcode_data.split("\n")
@@ -74,6 +77,10 @@ def read_gcode_file(file_path):
     return points
 
 ################################# SVG ############################################
+
+# Extract the paths from an SVG file and assign every path to the movement of a flower
+# Input: file_path: path to the SVG file
+# Output: flower_movements: list of lists with the movements of every flower
 def read_svg_file(file_path):
     try:
         svg_data = untangle.parse(file_path)
@@ -85,71 +92,94 @@ def read_svg_file(file_path):
     for line in svg_data.svg.g.path:
         lines.append(line['d'])
     
-    # Extract the characters between 'm' and 'l' for the starting point
-    if ('m' in lines[0]) and ('l' in lines[0]):
-        m_index = lines[0].index('m')
-        l_index = lines[0].index('l')
-        start_point = lines[0][(m_index + 1):l_index]
-    else:
-        print("read_svg_file: No path found on file. It must be first object")
-        return
+    # Create structure for all the flower's movements
+    flower_movements = []
+
+    # Get de dots for every line
+    dots_data = []
+    for line in lines:
+        # Extract the characters between 'm' and 'l' for the starting point
+        if ('m' in line) and ('l' in line):
+            m_index = line.index('m')
+            l_index = line.index('l')
+            start_point = line[(m_index + 1):l_index]
+        else:
+            print("read_svg_file: No path found on file. It must be first object")
+            return
  
-    # Extract the characters between 'l' and 'l'
-    dots_data = lines[0][l_index:]
-    dots_data = dots_data.split("l")
-    # Transform from 74,75 to X74 Y75
-    for dot in dots_data:
-        dot = 'X' + dot
-        dot = dot.replace(',', ' Y')
+        # Extract the characters between 'l' and 'l'
+        dots_data = line[l_index:]
+        dots_data = dots_data.split("l")
+        # Transform from 74,75 to X74 Y75
+        for dot in dots_data:
+            dot = 'X' + dot
+            dot = dot.replace(',', ' Y')
 
-    #From relative coordinates to absolute coordinates and store in Xxxxx Yyyyy format
-    x = float(start_point.split(',')[0]) * SVG_SCALE
-    y = (float(svg_data.svg._attributes['height']) - float(start_point.split(',')[1])) * SVG_SCALE
-    dots_data[0] = 'X' + str(x) + ' Y' + str(y)
-    for i in range(1, len(dots_data)):
-        x = x + float(dots_data[i].split(',')[0]) * SVG_SCALE
-        y = y - float(dots_data[i].split(',')[1]) * SVG_SCALE
-        dots_data[i] = 'X' + str(x) + ' Y' + str(y) 
+        #From relative coordinates to absolute coordinates and store in Xxxxx Yyyyy format
+        x = float(start_point.split(',')[0]) * SVG_SCALE
+        y = (float(svg_data.svg._attributes['height']) - float(start_point.split(',')[1])) * SVG_SCALE
+        dots_data[0] = 'X' + str(x) + ' Y' + str(y)
+        for i in range(1, len(dots_data)):
+            x = x + float(dots_data[i].split(',')[0]) * SVG_SCALE
+            y = y - float(dots_data[i].split(',')[1]) * SVG_SCALE
+            dots_data[i] = 'X' + str(x) + ' Y' + str(y) 
     
-    return dots_data
+        # Adddots_data to flower_movements
+        flower_movements.append(dots_data)
 
+    return flower_movements
+
+# Analyze al the flower movements inside a list
+# Input: list_points: list of lists with the movements of every flower
+# Output: print on screen the number of flowers and the max and min values of F, X and Y
 def points_analytics(list_points):
     if not list_points:
         print ("points_analytics: No points to analyze.")
         return
 
-    list_F = []
-    list_X = []
-    list_Y = []
+    # Print number or records
+    print("Number of flowers: " + str(len(list_points)))
 
-    # Separation F and XY
-    for record in list_points:
-        if record.startswith("F"):
-            list_F.append(int(record[1:]))
-        if record.startswith("X"):
-            list_X.append(float(record.split('X')[1].split(' ')[0]))
-            list_Y.append(float(record.split('Y')[1].split(' ')[0]))
+    # Analyze every record
+    counter = 0
+    for flower in list_points:
+        print("--- " + "Flower " + str(counter) + ' ---')
+        list_F = []
+        list_X = []
+        list_Y = []
+
+        # Separation F and XY
+        for record in flower:
+            if record.startswith("F"):
+                list_F.append(int(record[1:]))
+            if record.startswith("X"):
+                list_X.append(float(record.split('X')[1].split(' ')[0]))
+                list_Y.append(float(record.split('Y')[1].split(' ')[0]))
              
-    if list_F: print("Fmax:" + str(max(list_F)))
-    if list_F: print("Fmin:" + str(min(list_F)))
-    if list_X: print("Xmax:" + str(max(list_X)))
-    if list_X: print("Xmin:" + str(min(list_X)))
-    if list_Y: print("Ymax:" + str(max(list_Y)))
-    if list_Y: print("Ymin:" + str(min(list_Y)))
-
+        if list_F: print("Fmax:" + str(max(list_F)))
+        if list_F: print("Fmin:" + str(min(list_F)))
+        if list_X: print("Xmax:" + str(max(list_X)))
+        if list_X: print("Xmin:" + str(min(list_X)))
+        if list_Y: print("Ymax:" + str(max(list_Y)))
+        if list_Y: print("Ymin:" + str(min(list_Y)))
+        counter += 1
 
 ################################# ANIMATION ############################################
 
-#It draws a screen with xmax and ymax dimensions and it draws a cercle following the GCODE commands
+# It draws a screen with all the flowers moving according to the list of points
+# Screen size is defined by SCREEN_WIDTH and SCREEN_HEIGHT
+# Input: gcode_data: list of lists with the movements of every flower
 def animate_gcode(gcode_data):
     if not gcode_data:
         print("animate_gcode: No points to draw.")
         return
-    # Define a Robot object, our sprite
-    class Robot(pygame.sprite.Sprite):
-        def __init__(self):
-            super(Robot, self).__init__()
-            self.surf = pygame.image.load("data/RobotTAV.png").convert()
+    # Define a Flower object, our sprite
+    class Flower(pygame.sprite.Sprite):
+        def __init__(self, flower_number):
+            super(Flower, self).__init__()
+            # Image name
+            image_name = "Eines/Editor-de-recorreguts/data/Flower" + str(flower_number) + ".png"
+            self.surf = pygame.image.load(image_name).convert()
             self.surf = pygame.transform.scale(self.surf, (X_SPRITE_SIZE, Y_SPRITE_SIZE)) #Scale the image
             self.surf.set_colorkey((255, 255, 255), RLEACCEL)
             self.rect = self.surf.get_rect()
@@ -161,8 +191,10 @@ def animate_gcode(gcode_data):
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Temps de flors 2025")
     
-    # Instantiate Robot
-    robot1 = Robot()
+    # Instantiate all Flowers
+    flower = []
+    for i in range(len(gcode_data)):
+        flower.append(Flower(i))
 
     # Text initialization
     font = pygame.font.Font('freesansbold.ttf', 25)
@@ -237,7 +269,7 @@ def animate_gcode(gcode_data):
         pygame.draw.rect(screen, (255,255,255), pygame.Rect(0, 0, FIELD_WIDTH * scale, FIELD_HEIGHT * scale)) #Draw the field in white
         pixel_x = int(round((x * scale)-X_SPRITE_SIZE/2))
         pixel_y = int(round((FIELD_HEIGHT-y) * scale - Y_SPRITE_SIZE/2))
-        screen.blit(robot1.surf, (pixel_x, pixel_y))
+        screen.blit(flower[0].surf, (pixel_x, pixel_y))
         screen.blit(text1, (10,10))
         screen.blit(text2, (10,35))
         screen.blit(text3, (10,60))
@@ -280,8 +312,8 @@ def export_gcode(gcode_data):
 
 #Main function
 def main():
-    dots_gcode = read_gcode_file("gcode/"+file)
-    dots_svg = read_svg_file("svg/" + svg_file)
+    #dots_gcode = read_gcode_file("gcode/"+file)
+    dots_svg = read_svg_file("Eines/Editor-de-recorreguts/svg/" + svg_file)
     points_analytics(dots_svg)
     animate_gcode(dots_svg)
     export_gcode(dots_svg)
