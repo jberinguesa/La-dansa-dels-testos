@@ -39,44 +39,6 @@ from pygame.locals import (
 ####################################################################################
 
 
-################################# GCODE ############################################
-
-# Read a GCODE file
-# Input: file_path: path to the GCODE file
-def read_gcode_file(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            gcode_data = file.read()
-    except FileNotFoundError:
-        print("read_gcode_file: GCODE file not found.")
-        return
-
-    #Filter just G0 and G1 commands
-    gcode_data = gcode_data.split("\n")
-    gcode_data = [line for line in gcode_data if line.startswith("G0") or line.startswith("G1")]
-
-    #From gcode_data, it returns a list of tuples with the coordinates of the points
-    points = []
-    for line in gcode_data:
-        line = line.split(';')[0]  # Discard everything after ';'
-        if 'F' in line: #We keep F value
-            f_index = line.index('F')
-            f_value = line[f_index:].split(" ")[0]
-            points.append(f_value)
-        if ('X' in line) or ('Y' in line): #We keep X and Y values
-            f_value = ''
-            if 'X' in line:
-                f_index = line.index('X')
-                x = line.split('X')[1].split(' ')[0]
-                f_value = 'X' + str(x) + ' '
-
-            if 'Y' in line:
-                f_index = line.index('Y')
-                y = line.split('Y')[1].split(' ')[0]
-                f_value = f_value + 'Y' + str(y)
-            points.append(f_value)
-    return points
-
 ################################# SVG ############################################
 
 # Extract the paths from an SVG file and assign every path to the movement of a flower
