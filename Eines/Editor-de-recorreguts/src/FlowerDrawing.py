@@ -20,11 +20,11 @@ Y_SPRITE_SIZE = 44
 FPS = 30 #Frames per second
 GCODE_SCALE = 7 #We scale the GCODE to fit the field, just x and y, no speed
 SVG_SCALE = 1 #We scale the SVG to fit the field
-REPRODUCTION_SPEED = 10 #To speed up the reproduction
+REPRODUCTION_SPEED = 30 #To speed up the reproduction
 
 scale = SCREEN_WIDTH / FIELD_WIDTH
 file = "GCODETest.gcode"
-svg_file = "Recorregut3.svg"
+svg_file = "Recorregut4.svg"
 export_file = "DotTest.txt"
 
 from pygame.locals import (
@@ -185,6 +185,7 @@ class flowers_positions:
         self.n = 0 # Actual instruction number
         self.end_movement = False # True if the movement has ended
         self.get_instructions = True # True if it is time to get the next instruction
+        self.start_position_reached = False #True if flower has reached its start position.
 
     def get_next_line(self, instruction):
         self.xfin = float(instruction.split('X')[1].split(' ')[0])
@@ -259,7 +260,11 @@ def animate_gcode(gcode_data):
     # Run until the user asks to quit
     running = True
 
-    get_instructions = True
+    # First, all the flowers to start position
+    everybody_ready_to_start = False
+    flower_to_position = -1
+    flower_positioned = True
+
     clock = pygame.time.Clock()
 
     # Instantiate all Flowers
@@ -274,21 +279,37 @@ def animate_gcode(gcode_data):
             if event.type == pygame.QUIT:
                 running = False
 
-        # Update the position of the flowers
-        for i in range(len(gcode_data)):
-            if not flowers[i].end_movement:
-                if flowers[i].get_instructions: #Get the next instruction            
-                    if gcode_data[i][flowers[i].n].startswith("F"):   #Speed instruction
-                        flowers[i].set_speed(gcode_data[0][flowers[i].n])
-                        flowers[i].n += 1
+        if not everybody_ready_to_start: # We position all flowers to start
+            if flower_positioned: # We get position of next flower to position
+                flower_to_position += 1
+                if flower_to_position >= len(gcode_data):
+                    everybody_ready_to_start = True
+                else:
+                    if gcode_data[flower_to_position][flowers[flower_to_position].n].startswith("F"):   #Speed instruction
+                        flowers[flower_to_position].set_speed(gcode_data[flower_to_position][flowers[flower_to_position].n])
+                        flowers[flower_to_position].n += 1
+                    if gcode_data[flower_to_position][flowers[flower_to_position].n].startswith("X"):   #Movement instruction
+                        flowers[flower_to_position].get_next_line(gcode_data[flower_to_position][flowers[flower_to_position].n])
+            
+            if flower_to_position < len(gcode_data):
+                # We move flower to its initial position
+                flower_positioned = flowers[flower_to_position].get_next_position()
+
+        else: # Update the position of every flower acording to gcode
+            for i in range(len(gcode_data)):
+                if not flowers[i].end_movement:
+                    if flowers[i].get_instructions: #Get the next instruction            
+                        if gcode_data[i][flowers[i].n].startswith("F"):   #Speed instruction
+                            flowers[i].set_speed(gcode_data[i][flowers[i].n])
+                            flowers[i].n += 1
                 
-                    if gcode_data[i][flowers[i].n].startswith("X"):   #Movement instruction
-                        flowers[i].get_next_line(gcode_data[i][flowers[i].n])
-                        flowers[i].get_instructions = False
+                        if gcode_data[i][flowers[i].n].startswith("X"):   #Movement instruction
+                            flowers[i].get_next_line(gcode_data[i][flowers[i].n])
+                            flowers[i].get_instructions = False
         
-                flowers[i].get_instructions = flowers[i].get_next_position()
-                if flowers[i].n >= len(gcode_data[i]):
-                    flowers[i].end_movement = True
+                    flowers[i].get_instructions = flowers[i].get_next_position()
+                    if flowers[i].n >= len(gcode_data[i]):
+                        flowers[i].end_movement = True
             
         # Update the display
         screen.fill((0, 0, 0))  # Fill the background black
