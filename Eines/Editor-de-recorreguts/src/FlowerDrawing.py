@@ -24,7 +24,7 @@ REPRODUCTION_SPEED = 30 #To speed up the reproduction
 
 scale = SCREEN_WIDTH / FIELD_WIDTH
 file = "GCODETest.gcode"
-svg_file = "Recorregut4.svg"
+svg_file = "Recorregut5.svg"
 export_file = "DotTest.txt"
 
 from pygame.locals import (
@@ -168,9 +168,9 @@ def points_analytics(list_points):
 ################################# ANIMATION ############################################
 
 class flowers_positions:
-    def __init__(self):
-        self.x = 0 # Actual x position
-        self.y = 0 # Actual y position
+    def __init__(self, initial_x, initial_y):
+        self.x = initial_x # Actual x position
+        self.y = initial_y # Actual y position
         self.xin = 0 # Initial x position in mm of the line it is in
         self.yin = 0 # Initial y position in mm of the line it is in
         self.xfin = 0 # Final x position in mm of the line it is in
@@ -237,7 +237,7 @@ def animate_gcode(gcode_data):
         def __init__(self, flower_number):
             super(Flower_sprite, self).__init__()
             # Image name
-            image_name = "Eines/Editor-de-recorreguts/data/Flower" + str(flower_number) + ".png"
+            image_name = "Eines/Editor-de-recorreguts/data/Sprites/Flower" + str(flower_number) + ".png"
             self.surf = pygame.image.load(image_name).convert_alpha()
             self.surf = pygame.transform.scale(self.surf, (X_SPRITE_SIZE, Y_SPRITE_SIZE)) #Scale the image
             self.surf.set_colorkey((255, 255, 255), pygame.locals.RLEACCEL)
@@ -259,6 +259,7 @@ def animate_gcode(gcode_data):
     
     # Run until the user asks to quit
     running = True
+    pause = False
 
     # First, all the flowers to start position
     everybody_ready_to_start = False
@@ -270,7 +271,7 @@ def animate_gcode(gcode_data):
     # Instantiate all Flowers
     flowers = []
     for i in range(len(gcode_data)):
-        flowers.append(flowers_positions())
+        flowers.append(flowers_positions(((len(gcode_data)-i)*50)+30, 100))
 
     while running:
 
@@ -278,62 +279,65 @@ def animate_gcode(gcode_data):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
-        if not everybody_ready_to_start: # We position all flowers to start
-            if flower_positioned: # We get position of next flower to position
-                flower_to_position += 1
-                if flower_to_position >= len(gcode_data):
-                    everybody_ready_to_start = True
-                else:
-                    if gcode_data[flower_to_position][flowers[flower_to_position].n].startswith("F"):   #Speed instruction
-                        flowers[flower_to_position].set_speed(gcode_data[flower_to_position][flowers[flower_to_position].n])
-                        flowers[flower_to_position].n += 1
-                    if gcode_data[flower_to_position][flowers[flower_to_position].n].startswith("X"):   #Movement instruction
-                        flowers[flower_to_position].get_next_line(gcode_data[flower_to_position][flowers[flower_to_position].n])
-            
-            if flower_to_position < len(gcode_data):
-                # We move flower to its initial position
-                flower_positioned = flowers[flower_to_position].get_next_position()
-
-        else: # Update the position of every flower acording to gcode
-            for i in range(len(gcode_data)):
-                if not flowers[i].end_movement:
-                    if flowers[i].get_instructions: #Get the next instruction            
-                        if gcode_data[i][flowers[i].n].startswith("F"):   #Speed instruction
-                            flowers[i].set_speed(gcode_data[i][flowers[i].n])
-                            flowers[i].n += 1
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                pause = not pause
                 
-                        if gcode_data[i][flowers[i].n].startswith("X"):   #Movement instruction
-                            flowers[i].get_next_line(gcode_data[i][flowers[i].n])
-                            flowers[i].get_instructions = False
-        
-                    flowers[i].get_instructions = flowers[i].get_next_position()
-                    if flowers[i].n >= len(gcode_data[i]):
-                        flowers[i].end_movement = True
+        if not pause:
+            if not everybody_ready_to_start: # We position all flowers to start
+                if flower_positioned: # We get position of next flower to position
+                    flower_to_position += 1
+                    if flower_to_position >= len(gcode_data):
+                        everybody_ready_to_start = True
+                    else:
+                        if gcode_data[flower_to_position][flowers[flower_to_position].n].startswith("F"):   #Speed instruction
+                            flowers[flower_to_position].set_speed(gcode_data[flower_to_position][flowers[flower_to_position].n])
+                            flowers[flower_to_position].n += 1
+                        if gcode_data[flower_to_position][flowers[flower_to_position].n].startswith("X"):   #Movement instruction
+                            flowers[flower_to_position].get_next_line(gcode_data[flower_to_position][flowers[flower_to_position].n])
             
-        # Update the display
-        screen.fill((0, 0, 0))  # Fill the background black
-        pygame.draw.rect(screen, (255,255,255), pygame.Rect(0, 0, FIELD_WIDTH * scale, FIELD_HEIGHT * scale)) #Draw the field in white
+                if flower_to_position < len(gcode_data):
+                    # We move flower to its initial position
+                    flower_positioned = flowers[flower_to_position].get_next_position()
+
+            else: # Update the position of every flower acording to gcode
+                for i in range(len(gcode_data)):
+                    if not flowers[i].end_movement:
+                        if flowers[i].get_instructions: #Get the next instruction            
+                            if gcode_data[i][flowers[i].n].startswith("F"):   #Speed instruction
+                                flowers[i].set_speed(gcode_data[i][flowers[i].n])
+                                flowers[i].n += 1
+                
+                            if gcode_data[i][flowers[i].n].startswith("X"):   #Movement instruction
+                                flowers[i].get_next_line(gcode_data[i][flowers[i].n])
+                                flowers[i].get_instructions = False
         
-        for i in range(len(gcode_data)): # Update sprites on the screen
-            screen.blit(sprites[i].surf, flowers[i].get_flower_coordinates())
+                        flowers[i].get_instructions = flowers[i].get_next_position()
+                        if flowers[i].n >= len(gcode_data[i]):
+                            flowers[i].end_movement = True
+            
+            # Update the display
+            screen.fill((0, 0, 0))  # Fill the background black
+            pygame.draw.rect(screen, (255,255,255), pygame.Rect(0, 0, FIELD_WIDTH * scale, FIELD_HEIGHT * scale)) #Draw the field in white
+        
+            for i in range(len(gcode_data)): # Update sprites on the screen
+                screen.blit(sprites[i].surf, flowers[i].get_flower_coordinates())
 
-        text1 = font.render('F: ', True, (0, 0, 0), (255, 255, 255)) # Titles for text
-        text2 = font.render('X: ', True, (0, 0, 0), (255, 255, 255))
-        text3 = font.render('Y: ', True, (0, 0, 0), (255, 255, 255))
-        screen.blit(text1, (10, 10))
-        screen.blit(text2, (10, 35))
-        screen.blit(text3, (10, 60))
-        for i in range(len(gcode_data)): # Update text for every flower
-            text1 = font.render(str(flowers[i].F), True, (0, 0, 0), (255, 255, 255))
-            text2 = font.render(str(round(flowers[i].xfin, 2)), True, (0, 0, 0), (255, 255, 255))
-            text3 = font.render(str(round(flowers[i].yfin, 2)), True, (0, 0, 0), (255, 255, 255))
-            screen.blit(text1, (27 + (i*50), 10))
-            screen.blit(text2, (27 + (i*50), 35))
-            screen.blit(text3, (27 + (i*50), 60))
+            text1 = font.render('F: ', True, (0, 0, 0), (255, 255, 255)) # Titles for text
+            text2 = font.render('X: ', True, (0, 0, 0), (255, 255, 255))
+            text3 = font.render('Y: ', True, (0, 0, 0), (255, 255, 255))
+            screen.blit(text1, (10, 10))
+            screen.blit(text2, (10, 35))
+            screen.blit(text3, (10, 60))
+            for i in range(len(gcode_data)): # Update text for every flower
+                text1 = font.render(str(flowers[i].F), True, (0, 0, 0), (255, 255, 255))
+                text2 = font.render(str(round(flowers[i].xfin, 2)), True, (0, 0, 0), (255, 255, 255))
+                text3 = font.render(str(round(flowers[i].yfin, 2)), True, (0, 0, 0), (255, 255, 255))
+                screen.blit(text1, (27 + (i*50), 10))
+                screen.blit(text2, (27 + (i*50), 35))
+                screen.blit(text3, (27 + (i*50), 60))
 
-        pygame.display.flip()
-        clock.tick(FPS)
+            pygame.display.flip()
+            clock.tick(FPS)
              
     # Done! Time to quit.
     pygame.quit()
@@ -372,7 +376,7 @@ def export_gcode(gcode_data):
 #Main function
 def main():
     #dots_gcode = read_gcode_file("gcode/"+file)
-    dots_svg = read_svg_file("Eines/Editor-de-recorreguts/svg/" + svg_file)
+    dots_svg = read_svg_file("Eines/Editor-de-recorreguts/data/Coreografies/" + svg_file)
     points_analytics(dots_svg)
     animate_gcode(dots_svg)
     export_gcode(dots_svg)
