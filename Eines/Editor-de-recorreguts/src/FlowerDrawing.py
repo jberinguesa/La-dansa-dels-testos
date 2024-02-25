@@ -24,18 +24,19 @@ REPRODUCTION_SPEED = 30 #To speed up the reproduction
 
 scale = SCREEN_WIDTH / FIELD_WIDTH
 file = "GCODETest.gcode"
-svg_file = "Recorregut5.svg"
+path_file = "Recorregut5"
 export_file = "DotTest.txt"
 
 from pygame.locals import (
     RLEACCEL,
 )
 ############################ INSTRUCTIONS ##########################################
-#GCODE and SVG files are read and stored in a list with two different type of elements:
-# - F3400 Speed in mm/min
-# - X100 Y200 Absolute coordinates in mm
-#This list my be animated on the screen or create a file with the format
-#100,200 Relative coordinates in mm
+# SVG files are read and stored in a list, which I call gcode_data with three different type of elements:
+#  - F3400 Speed in mm/min
+#  - X100 Y200 Absolute coordinates in mm
+#  - W1000 Wait for 1000 ms
+# This list my be animated on the screen or create a file with the format
+# 100,200 Relative coordinates in mm
 ####################################################################################
 
 
@@ -92,6 +93,26 @@ def read_svg_file(file_path):
 
     return flower_movements
 
+def add_timing_data(file_path, gcode_data):
+    try:
+        with open(file_path, 'r') as file:
+            speed_data = file.read()
+    except FileNotFoundError:
+        print("add_timing_data: SPEED file not found.")
+        return
+    
+    flower = 0
+    speed_data = speed_data.split("\n")
+
+    for line in speed_data:
+        if line.startswith("R"):
+            flower = int(line[1:])
+        else:
+            if not line.startswith("#"): # It means no comment
+                point = int(line.split(' ')[0])
+                instruction = line.split(' ')[1]
+        # Insert instruction in row point, column flower of gcode_data
+            
 # Analyze al the flower movements inside a list
 # Input: list_points: list of lists with the movements of every flower
 # Output: print on screen the number of flowers and the max and min values of F, X and Y
@@ -338,8 +359,9 @@ def export_gcode(gcode_data):
 #Main function
 def main():
     #dots_gcode = read_gcode_file("gcode/"+file)
-    dots_svg = read_svg_file("Eines/Editor-de-recorreguts/data/Coreografies/" + svg_file)
+    dots_svg = read_svg_file("Eines/Editor-de-recorreguts/data/Coreografies/" + path_file + ".svg")
     points_analytics(dots_svg)
+    add_timing_data("Eines/Editor-de-recorreguts/data/Coreografies/" + path_file + ".spd", dots_svg)
     animate_gcode(dots_svg)
     export_gcode(dots_svg)
 
