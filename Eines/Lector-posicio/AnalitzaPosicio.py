@@ -167,9 +167,59 @@ def TrobaPosicioFlor(image):
     #Get the angle betwwen the line joining the two centers and the y axis
     angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
     return middle_point, distance, angle
-    
+
+def ActivaCamera():
+    cap = cv2.VideoCapture('rtsp://admin:TAV1234a@192.168.1.116:554/11')
+
+    # Check if the camera opened successfully
+    if not cap.isOpened():
+        print("ActivaCamera: Could not open camera.")
+        exit()
+    return cap
+
+def LlegeixFoto(cap):
+    ret, frame = cap.read()
+    if not ret:
+        print("LlegeixFoto: Failed to capture frame.")
+    return frame
+
+    # Release the VideoCapture object and close all OpenCV windows
+
+def prova():
+
+    # Replace 'rtsp://username:password@IP:port/stream' with your RTSP stream URL
+    rtsp_url = 'rtsp://admin:TAV1234a@192.168.1.116:554/11'
+
+    # Create a VideoCapture object
+    cap = ActivaCamera()
+
+    # Check if the camera opened successfully
+    if not cap.isOpened():
+        print("Error: Could not open camera.")
+        exit()
+
+    # Read and display frames from the camera
+    while True:
+        frame = LlegeixFoto(cap)
+        cv2.imshow('RTSP Camera', frame)
+
+        # Press 'q' to quit
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # Release the VideoCapture object and close all OpenCV windows
+    cap.release()
+    cv2.destroyAllWindows()
+
 #Main function
 def main():
+    #cap = ActivaCamera()
+    #image = LlegeixFoto(cap)
+    prova()
+    cap = cv2.VideoCapture('rtsp://admin:TAV1234a@192.168.1.116:554/11')
+    ret, frame = cap.read()
+    
+    cv2.imshow('Frame', frame)
     #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6330.jpg')
     #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6331.jpg')
     image = ObreImatge('Eines/Lector-posicio/Data/IMG_6332.jpg')
@@ -179,6 +229,9 @@ def main():
     print('Posició de la flor:', Posicio)
     print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
     print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
+    cap.release()
+    cv2.destroyAllWindows()  
+
 
 if __name__ == "__main__":
     main()
