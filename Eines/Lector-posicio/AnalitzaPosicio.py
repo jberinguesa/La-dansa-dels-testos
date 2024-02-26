@@ -177,52 +177,47 @@ def ActivaCamera():
         exit()
     return cap
 
-def LlegeixFoto(cap):
+def LlegeixFotoCamera(cap):
     ret, frame = cap.read()
     if not ret:
         print("LlegeixFoto: Failed to capture frame.")
+    if DEBUG:
+        #Display read image
+        cv2.imshow('Imatge de la càmera', frame)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    # Convert image to grayscale
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    if DEBUG:
+        #Display read image
+        cv2.imshow('Imatge convertida a grisos', frame)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+     # Perform global thresholding
+    
+    _, img_thresh = cv2.threshold(frame, 200, 255, cv2.THRESH_BINARY)
+
+    if DEBUG:
+        # Display the thresholded image
+        cv2.imshow('Thresholded image', img_thresh)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
     return frame
 
     # Release the VideoCapture object and close all OpenCV windows
 
-def prova():
-
-    # Replace 'rtsp://username:password@IP:port/stream' with your RTSP stream URL
-    rtsp_url = 'rtsp://admin:TAV1234a@192.168.1.116:554/11'
-
-    # Create a VideoCapture object
-    cap = ActivaCamera()
-
-    # Check if the camera opened successfully
-    if not cap.isOpened():
-        print("Error: Could not open camera.")
-        exit()
-
-    # Read and display frames from the camera
-    while True:
-        frame = LlegeixFoto(cap)
-        cv2.imshow('RTSP Camera', frame)
-
-        # Press 'q' to quit
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    # Release the VideoCapture object and close all OpenCV windows
-    cap.release()
-    cv2.destroyAllWindows()
 
 #Main function
 def main():
-    #cap = ActivaCamera()
-    #image = LlegeixFoto(cap)
-    prova()
-    cap = cv2.VideoCapture('rtsp://admin:TAV1234a@192.168.1.116:554/11')
-    ret, frame = cap.read()
+    cap = ActivaCamera()
+    image = LlegeixFotoCamera(cap)
     
-    cv2.imshow('Frame', frame)
     #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6330.jpg')
     #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6331.jpg')
-    image = ObreImatge('Eines/Lector-posicio/Data/IMG_6332.jpg')
+    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6332.jpg')
     #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6334.jpg')
     #image = ObteCamp(image)
     Posicio, Distancia, Angle = TrobaPosicioFlor(image)
