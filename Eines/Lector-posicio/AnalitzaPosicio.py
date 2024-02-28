@@ -2,6 +2,7 @@ import cv2
 import datetime
 import math
 import numpy as np
+import pickle   
 
 DEBUG = True
 REDUCCIO_CAMP_REFERENCIES = 12
@@ -15,7 +16,7 @@ def ObreImatge(image_path):
 
     # Check if the image was successfully read
     if image is None:
-        print('No s\'ha pogut obrir el fitxer', image_path)
+        print('ObreImatge: No s\'ha pogut obrir el fitxer', image_path)
         return
     
     if DEBUG:
@@ -24,18 +25,7 @@ def ObreImatge(image_path):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    # Perform global thresholding
-    retval, img_thresh = cv2.threshold(image, 250, 255, cv2.THRESH_BINARY)
-
-    if DEBUG:
-        # Display the thresholded image
-        cv2.imshow('Thresholded image', img_thresh)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-    GuardaImatge(img_thresh, 'Eines/Lector-posicio/Data/Output/Thresholded')
-
-    return img_thresh 
+    return image 
 
 # Function to extract just the field from the image
 # Input: image_path: path to the image file
@@ -110,7 +100,7 @@ def ObteCamp(image):
     # Return field size
     return image
 
-# Function to save an image on file
+# Function to save an image on file with a timestamp
 # Input: image: image to save
 #        filename: name of the file
 def GuardaImatge(image, filename):
@@ -122,6 +112,10 @@ def GuardaImatge(image, filename):
         print('No s\'ha pogut guardar la imatge', filename)
         return
     
+# Function to find the position of one flower in the image
+# Just one flower is expected to be found
+# Input: image: image to analyze
+# Output: middle_point: coordinates of the middle point between the two centers
 def TrobaPosicioFlor(image):
     # Find contours
     contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
@@ -134,7 +128,7 @@ def TrobaPosicioFlor(image):
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
             centers.append((cx, cy))
-            cv2.circle(image, (cx, cy), 5, (255, 0, 0), -1)
+            cv2.circle(image, (cx, cy), 20, (255, 0, 0), -1)
 
     if DEBUG:
         #Draw a gray circle on every center
@@ -168,6 +162,8 @@ def TrobaPosicioFlor(image):
     angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
     return middle_point, distance, angle
 
+# Function to activate the camera
+# Output: cap: VideoCapture object
 def ActivaCamera():
     cap = cv2.VideoCapture('rtsp://admin:TAV1234a@192.168.1.116:554/11')
 
@@ -177,18 +173,30 @@ def ActivaCamera():
         exit()
     return cap
 
+
+# Function to read a frame from the camera
+# Input: cap: VideoCapture object
+# Output: frame: frame read from the camera
 def LlegeixFotoCamera(cap):
     ret, frame = cap.read()
     if not ret:
         print("LlegeixFoto: Failed to capture frame.")
     if DEBUG:
         #Display read image
-        cv2.imshow('Imatge de la càmera', frame)
+        cv2.imshow('Imatge de la camera', frame)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
-    # Convert image to grayscale
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    return frame
+
+# Function to perform global thresholding on an image
+# Input: frame: image to threshold
+# Output: img_thresh: thresholded image
+def ThresholdImatge(frame):
+    # If the image is not in grayscale, convert it
+    if len(frame.shape) > 2:
+        # Convert image to grayscale
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     if DEBUG:
         #Display read image
@@ -197,7 +205,7 @@ def LlegeixFotoCamera(cap):
         cv2.destroyAllWindows()
      # Perform global thresholding
     
-    _, img_thresh = cv2.threshold(frame, 200, 255, cv2.THRESH_BINARY)
+    _, img_thresh = cv2.threshold(frame, 240, 255, cv2.THRESH_BINARY)
 
     if DEBUG:
         # Display the thresholded image
@@ -205,26 +213,62 @@ def LlegeixFotoCamera(cap):
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    return frame
+    return img_thresh  
 
     # Release the VideoCapture object and close all OpenCV windows
 
+# Function to correct the distortion of an image
+# Input: image: image to correct
+#        cameraMatrix: camera matrix
+#        dist: distortion coefficients
+#        newCameraMatrix: new camera matrix
+#        roi: region of interest
+#        w: width of the image
+#        h: height of the image
+# Output: dst: undistorted and cropped image
+def CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
+    # Undistort the image
+    mapx, mapy = cv2.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w,h), 5)
+    dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
+    if DEBUG:
+        # Display undistorted image
+        cv2.imshow('Thresholded image', dst)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    # crop the image
+    x, y, w, h = roi
+    dst = dst[y:y+h, x:x+w] 
+
+    if DEBUG:
+        # Display cropped image
+        cv2.imshow('Cropped image', dst)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    return dst
 
 #Main function
 def main():
-    cap = ActivaCamera()
-    image = LlegeixFotoCamera(cap)
-    
-    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6330.jpg')
-    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6331.jpg')
-    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6332.jpg')
-    #image = ObreImatge('Eines/Lector-posicio/Data/IMG_6334.jpg')
+    # Load camera calibration data
+    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+
+    #cap = ActivaCamera()
+    #image = LlegeixFotoCamera(cap)
+    #GuardaImatge(image, 'Eines/Lector-posicio/Data/Output/FotoProva')
+    image = ObreImatge('Eines/Lector-posicio/Data/Output/FotoProva_20240228_221435.jpg')
+    h,  w = image.shape[:2]
+    newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+
+    image = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+    image = ThresholdImatge(image)
     #image = ObteCamp(image)
     Posicio, Distancia, Angle = TrobaPosicioFlor(image)
     print('Posició de la flor:', Posicio)
     print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
     print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
-    cap.release()
+    #cap.release()
     cv2.destroyAllWindows()  
 
 
