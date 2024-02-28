@@ -120,6 +120,9 @@ def TrobaPosicioFlor(image):
     # Find contours
     contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
 
+    # Filter contours by area, we keep only the big ones
+    contours = [contour for contour in contours if cv2.contourArea(contour) > 300]
+
     # Find centers
     centers = []
     for contour in contours:
@@ -128,12 +131,12 @@ def TrobaPosicioFlor(image):
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
             centers.append((cx, cy))
-            cv2.circle(image, (cx, cy), 20, (255, 0, 0), -1)
+            cv2.circle(image, (cx, cy), 10, (255, 0, 0), -1)
 
     if DEBUG:
         #Draw a gray circle on every center
         for center in centers:
-            cv2.circle(image, center, 10, (128, 128, 128), -1)
+            cv2.circle(image, center, 5, (128, 128, 128), -1)
         cv2.imshow('Image amb References', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -205,7 +208,7 @@ def ThresholdImatge(frame):
         cv2.destroyAllWindows()
      # Perform global thresholding
     
-    _, img_thresh = cv2.threshold(frame, 240, 255, cv2.THRESH_BINARY)
+    _, img_thresh = cv2.threshold(frame, 250, 255, cv2.THRESH_BINARY)
 
     if DEBUG:
         # Display the thresholded image
