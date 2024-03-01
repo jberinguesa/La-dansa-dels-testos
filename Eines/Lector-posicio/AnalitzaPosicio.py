@@ -299,21 +299,26 @@ def main():
         k = cv2.waitKey(5)
         if k == 27:
             break
-        elif k == ord('s'):
-        
-            h,  w = image.shape[:2]
-            newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+        h,  w = image.shape[:2]
+        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
-            imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
-            imaget = ThresholdImatge(imagec)
-            #image = ObteCamp(image)
-            Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
-            imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-            print('Posició de la flor:', Posicio)
-            print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
-            print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
-            GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoProva')
-        cv2.imshow('Imatge de la càmera', image)
+        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imaget = ThresholdImatge(imagec)
+        #image = ObteCamp(image)
+        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
+        imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
+        # Add text to the image
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(imager, 'X: ' + str(Posicio[0]), (50, 60), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(imager, 'Y: ' + str(Posicio[1]), (50, 90), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        # Angle in str with just 2 decimals
+        Ang = "{:.2f}".format((Angle*360)/6.28)
+        cv2.putText(imager, 'Angle: ' + Ang, (50, 120), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        print('Posició de la flor:', Posicio)
+        print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
+        print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
+        #GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoProva')
+        cv2.imshow('Imatge de la càmera', imager)
     
     cap.release()
     cv2.destroyAllWindows()  
