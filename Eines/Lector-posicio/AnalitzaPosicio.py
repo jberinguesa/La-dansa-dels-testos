@@ -287,27 +287,33 @@ def main():
     cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
     dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
 
-    cap = ActivaCamera()
-    time.sleep(5)
-    for i in range(20):
-        # print timestamp with milliseconds
-        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'))
-        os.system('say beep')
-
+    cap = ActivaCamera()  
+     # Check if the camera opened successfully
+    if not cap.isOpened():
+        print("Main: Could not open camera.")
+        exit()    
+        
+    while cap.isOpened():
         image = LlegeixFotoCamera(cap)
         #image = ObreImatge('Eines/Lector-posicio/Data/FotoProva_20240301_060340.jpg')
-        h,  w = image.shape[:2]
-        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+        k = cv2.waitKey(5)
+        if k == 27:
+            break
+        elif k == ord('s'):
+        
+            h,  w = image.shape[:2]
+            newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
-        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
-        imaget = ThresholdImatge(imagec)
-        #image = ObteCamp(image)
-        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
-        imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-        print('Posició de la flor:', Posicio)
-        print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
-        print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
-        GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoProva')
+            imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+            imaget = ThresholdImatge(imagec)
+            #image = ObteCamp(image)
+            Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
+            imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
+            print('Posició de la flor:', Posicio)
+            print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
+            print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
+            GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoProva')
+        cv2.imshow('Imatge de la càmera', image)
     
     cap.release()
     cv2.destroyAllWindows()  
