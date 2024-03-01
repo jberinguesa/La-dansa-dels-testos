@@ -3,8 +3,10 @@ import datetime
 import math
 import numpy as np
 import pickle   
+import time
+import os
 
-DEBUG = True
+DEBUG = False
 REDUCCIO_CAMP_REFERENCIES = 12
 
 ####### Lectura i gravació d'imatges #######
@@ -257,6 +259,12 @@ def TrobaPosicioFlor(image):
     angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
     return middle_point, distance, angle
 
+# It draws a circle on the middle point and a line at the inclination of the flower
+# Input: image: image to draw on
+#        x: x coordinate of the middle point
+#        y: y coordinate of the middle point
+#        angle: inclination of the flower
+# Output: image: image with the circle and the line drawn
 def DibuixaPosicioFlor(image, x, y, angle):
     #Draw a circle on the middle point
     cv2.circle(image, (x, y), 100, (255, 255, 255), 2)
@@ -270,6 +278,8 @@ def DibuixaPosicioFlor(image, x, y, angle):
         cv2.imshow('Image amb dibuix posició flor', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+    
+    return image
 
 #Main function
 def main():
@@ -277,22 +287,29 @@ def main():
     cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
     dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
 
-    #cap = ActivaCamera()
-    #image = LlegeixFotoCamera(cap)
-    #GuardaImatge(image, 'Eines/Lector-posicio/Data/FotoProva')
-    image = ObreImatge('Eines/Lector-posicio/Data/FotoProva_20240301_060340.jpg')
-    h,  w = image.shape[:2]
-    newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+    cap = ActivaCamera()
+    time.sleep(5)
+    for i in range(20):
+        # print timestamp with milliseconds
+        print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'))
+        os.system('say beep')
 
-    imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
-    imaget = ThresholdImatge(imagec)
-    #image = ObteCamp(image)
-    Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
-    DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-    print('Posició de la flor:', Posicio)
-    print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
-    print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
-    #cap.release()
+        image = LlegeixFotoCamera(cap)
+        #image = ObreImatge('Eines/Lector-posicio/Data/FotoProva_20240301_060340.jpg')
+        h,  w = image.shape[:2]
+        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+
+        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imaget = ThresholdImatge(imagec)
+        #image = ObteCamp(image)
+        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
+        imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
+        print('Posició de la flor:', Posicio)
+        print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
+        print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
+        GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoProva')
+    
+    cap.release()
     cv2.destroyAllWindows()  
 
 
