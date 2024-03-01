@@ -257,7 +257,19 @@ def TrobaPosicioFlor(image):
     angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
     return middle_point, distance, angle
 
+def DibuixaPosicioFlor(image, x, y, angle):
+    #Draw a circle on the middle point
+    cv2.circle(image, (x, y), 100, (255, 255, 255), 2)
 
+    #Draw a line at the inclination of the flower
+    x2 = int(x + 200 * math.sin(angle))
+    y2 = int(y + 200 * math.cos(angle))
+    cv2.line(image, (x, y), (x2, y2), (255, 255, 255), 2)
+    
+    if DEBUG:
+        cv2.imshow('Image amb dibuix posició flor', image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 #Main function
 def main():
@@ -272,10 +284,11 @@ def main():
     h,  w = image.shape[:2]
     newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
-    image = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
-    image = ThresholdImatge(image)
+    imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+    imaget = ThresholdImatge(imagec)
     #image = ObteCamp(image)
-    Posicio, Distancia, Angle = TrobaPosicioFlor(image)
+    Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
+    DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
     print('Posició de la flor:', Posicio)
     print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
     print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
