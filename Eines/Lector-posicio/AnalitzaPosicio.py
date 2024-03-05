@@ -184,7 +184,6 @@ def ThresholdImatge(frame):
 
     return img_thresh  
 
-
 # Function to correct the distortion of an image
 # Input: image: image to correct
 #        cameraMatrix: camera matrix
@@ -216,12 +215,70 @@ def CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
 
     return dst
 
+# Foto to follow a flower. It reads the camera, it corrects the image, thresholds it and finds the position of the flower
+# It shows the image with a circle on the middle point and a line at the inclination of the flower
+# It also shows the x, y and angle of the flower
+# If the user presses 's' it saves the original, corrected, thresholded and position images
+# If the user presses 'esc' it closes the camera
+# Input: None
+# Output: None
+def SegueixFlor():
+    # Load camera calibration data
+    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+
+    cap = ActivaCamera()  
+     # Check if the camera opened successfully
+    if not cap.isOpened():
+        print("Main: Could not open camera.")
+        exit()    
+
+    while cap.isOpened():
+        image = LlegeixFotoCamera(cap)
+                
+        h,  w = image.shape[:2]
+        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+
+        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imaget = ThresholdImatge(imagec)
+        
+        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        if (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
+            # No flower found
+            cv2.putText(imagec, 'No s\'ha trobat flor', (50, 60), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.imshow('Imatge de la càmera', imagec)
+        else:
+            # Draw the position of the flower
+            imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
+            cv2.putText(imager, 'X: ' + str(Posicio[0]), (50, 60), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(imager, 'Y: ' + str(Posicio[1]), (50, 90), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            # Angle in str with just 2 decimals
+            Ang = "{:.2f}".format((Angle*360)/6.28)
+            cv2.putText(imager, 'Angle: ' + Ang, (50, 120), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.imshow('Imatge de la càmera', imager)
+        
+        k = cv2.waitKey(5)
+        if k == 27:
+            break
+        elif k == ord('s'):
+            GuardaImatge(image, 'Eines/Lector-posicio/Data/FotoOriginal')
+            GuardaImatge(imagec, 'Eines/Lector-posicio/Data/FotoCorregida')
+            GuardaImatge(imaget, 'Eines/Lector-posicio/Data/FotoThreshold') 
+            if not (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
+                GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoPosicio')
+    
+    cap.release()
+    cv2.destroyAllWindows()  
+
 ####### Anàlisis imatge #######
 
 # Function to find the position of one flower in the image
 # Just one flower is expected to be found
 # Input: image: image to analyze
 # Output: middle_point: coordinates of the middle point between the two centers
+#                       (0,0),0,0 if flower not found
 def TrobaPosicioFlor(image):
     # Find contours
     contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
@@ -248,11 +305,11 @@ def TrobaPosicioFlor(image):
         cv2.destroyAllWindows()
 
     # If more than 2 centers are found, print an error message
-    if len(centers) > 2:
+    if len(centers) > 2 or len(centers) < 2:
         print('TrobaPosicioFlor: S\'han trobat més de 2 referències')
         # Save image 
         GuardaImatge(image, 'Eines/Lector-posicio/Data/Output/ErrorReferences')
-        return 0,0,0
+        return (0,0),0,0
     
     # Calculate the distance between the two centers
     distance = math.sqrt((centers[0][0]-centers[1][0])**2 + (centers[0][1]-centers[1][1])**2)
@@ -296,6 +353,8 @@ def DibuixaPosicioFlor(image, x, y, angle):
 #Main function
 def main():
     global scalex, scaley, offsetx, offsety
+
+    SegueixFlor()
     # Load camera calibration data
     cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
     dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
@@ -322,60 +381,6 @@ def main():
     cv2.imshow('Posició', imagec)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    
-
-    ''' 
-        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
-        imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-        # Add text to the image
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(imager, 'X: ' + str(Posicio[0]), (50, 60), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(imager, 'Y: ' + str(Posicio[1]), (50, 90), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        # Angle in str with just 2 decimals
-        Ang = "{:.2f}".format((Angle*360)/6.28)
-        cv2.putText(imager, 'Angle: ' + Ang, (50, 120), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        print('Posició de la flor:', Posicio)
-        print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
-        print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
-        #GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoProva')
-        cv2.imshow('Imatge de la càmera', imager)
-    '''
-    cap.release()
-    cv2.destroyAllWindows()  
-
-def EnsenyaVideoModificatAmbPosicio():
-    cap = ActivaCamera()  
-     # Check if the camera opened successfully
-    if not cap.isOpened():
-        print("Main: Could not open camera.")
-        exit()    
-
-    while cap.isOpened():
-        image = LlegeixFotoCamera(cap)
-        #image = ObreImatge('Eines/Lector-posicio/Data/FotoProva_20240301_060340.jpg')
-        k = cv2.waitKey(5)
-        if k == 27:
-            break
-        h,  w = image.shape[:2]
-        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
-
-        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
-        imaget = ThresholdImatge(imagec)
-        #image = ObteCamp(image)
-        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
-        imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-        # Add text to the image
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(imager, 'X: ' + str(Posicio[0]), (50, 60), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(imager, 'Y: ' + str(Posicio[1]), (50, 90), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        # Angle in str with just 2 decimals
-        Ang = "{:.2f}".format((Angle*360)/6.28)
-        cv2.putText(imager, 'Angle: ' + Ang, (50, 120), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-        print('Posició de la flor:', Posicio)
-        print('Distancia de la flor (pixels): {:.2f}'.format(Distancia))
-        print('Angle de la flor (graus): {:.2f}'.format((Angle*360)/6.28))
-        #GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoProva')
-        cv2.imshow('Imatge de la càmera', imager)
     
     cap.release()
     cv2.destroyAllWindows()  
