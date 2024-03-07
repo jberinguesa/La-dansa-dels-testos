@@ -4,8 +4,12 @@ import glob
 import pickle
 
 
-################ FIND CHESSBOARD CORNERS - OBJECT POINTS AND IMAGE POINTS #############################
-
+# Calibration process
+# Just execute this script and it will calibrate the camera and save the results in the same folder
+# It generates files: calibration.pkl, cameraMatrix.pkl, dist.pkl
+# It also generates the undistorted images: 
+#   caliResult31.png: using undistort function
+#   caliResult32.png: using remap function
 chessboardSize = (9,6)
 frameSize = (3840,2160)
 

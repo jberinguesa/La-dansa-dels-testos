@@ -1,5 +1,9 @@
 import cv2
 
+# It reads images from the camera and saves them in the folder Eines/Calibracio-camera/Imatges
+# The images are saved with the name caliX.png, where X is a number that increases with each image saved
+# The program stops when the user presses the 'esc' key
+# The user can save an image by pressing the 's' key
 def LlegeixImatgesCalibracio():
 
     cap = cv2.VideoCapture('rtsp://admin:TAV1234a@192.168.1.116:554/11')
