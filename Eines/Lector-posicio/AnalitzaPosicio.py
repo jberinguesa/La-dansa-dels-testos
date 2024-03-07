@@ -6,14 +6,10 @@ import pickle
 import time
 import os
 
-DEBUG = False
+DEBUG = True
 REDUCCIO_CAMP_REFERENCIES = 12
 MIDA_CAMP_X = 2360
 MIDA_CAMP_Y = 1310
-scalex = 1  # Scale factor from screen to real world (mm/pixel)
-scaley = 1  # Scale factor from screen to real world (mm/pixel)
-offsetx = 1
-offsety = 1
 
 ####### Lectura i gravació d'imatges #######
 
@@ -54,6 +50,9 @@ def ActivaCamera():
 # Output: frame: frame read from the camera
 def LlegeixFotoCamera(cap):
     ret, frame = cap.read()
+    #GuardaImatge(frame, 'Eines/Lector-posicio/Data/FotoCamp')
+    frame = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240307_183247.jpg')
+        
     if not ret:
         print("LlegeixFoto: Failed to capture frame.")
     if DEBUG:
@@ -78,85 +77,129 @@ def GuardaImatge(image, filename):
     
 
 ####### Millora de l'imatge #######
+# Class which defines the field of the flowers
+class FlowerField:
+    def __init__(self):
+        self.left_up = (0,0) # Top left corner of the field in pixels
+        self.right_up = (0,0) # Top right corner of the field in pixels
+        self.left_down = (0,0) # Bottom left corner of the field in pixels
+        self.right_down = (0,0) # Bottom right corner of the field in pixels
+        self.image_size = (0,0) # Size of the screen in pixels
+
+    # It finds limits of the field. The field is limited by 4 white references
+    # Input: image: path to the undistorted image file
+    #        image_thresh: thresholded image
+    def ObteCamp(self):
+        # Load camera calibration data
+        cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+        dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+
+        cap = ActivaCamera()  
+        # Check if the camera opened successfully
+        if not cap.isOpened():
+            print("ObteCamp: Could not open camera.")
+            exit() 
+        image = LlegeixFotoCamera(cap)   
+        h,  w = image.shape[:2]
+        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+
+        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imaget = ThresholdImatge(imagec)
+        # Find contours
+        contours, _ = cv2.findContours(imaget, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
     
-# Function to extract just the field from the image
-# Input: image_path: path to the image file
-# Output: image: image without references
-def ObteCamp(image):
-    global scalex, scaley, offsetx, offsety
+        if DEBUG:
+            print('Nombre de contorns trobats:', len(contours))
+            # Print size of every contour
+            contour_trobats = list(contours)
+            # Sort by size
+            contour_trobats.sort(key=cv2.contourArea, reverse=True)
+            print('Àrea dels contorns trobats:')
+            for contour in contour_trobats:
+                # We print contour size if it is bigger than 0
+                if cv2.contourArea(contour) > 0:
+                    print(cv2.contourArea(contour))
 
-    # Find contours
-    contours, _ = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
-    
-    # Filter contours by area, we keep only the big ones
-    contours = [contour for contour in contours if cv2.contourArea(contour) > 300]
+        # Filter contours by area, we keep only the big ones
+        contours = [contour for contour in contours if cv2.contourArea(contour) > 50]
 
-    # Find the 3 contours delimiting the field
-    # Find centers
-    centers = []
-    for contour in contours:
-        M = cv2.moments(contour)
-        if M['m00'] != 0:
-            cx = int(M['m10']/M['m00'])
-            cy = int(M['m01']/M['m00'])
-            centers.append((cx, cy))
-            cv2.circle(image, (cx, cy), 5, (255, 0, 0), -1)
+        # Find the 4 contours delimiting the field
+        # Find centers
+        centers = []
+        for contour in contours:
+            M = cv2.moments(contour)
+            if M['m00'] != 0:
+                cx = int(M['m10']/M['m00'])
+                cy = int(M['m01']/M['m00'])
+                centers.append((cx, cy))
+                cv2.circle(image, (cx, cy), 5, (255, 0, 0), -1)
 
-    # Find the left up center 
-    distance_to_0 = [math.sqrt(x**2 + y**2) for (x, y) in centers]
-    left_up = centers[distance_to_0.index(min(distance_to_0))]
+        # Find the left up center 
+        distance_to_0 = [math.sqrt(x**2 + y**2) for (x, y) in centers]
+        self.left_up = centers[distance_to_0.index(min(distance_to_0))]
 
-    # Find the right up center
-    distance_to_x = [math.sqrt((image.shape[1]-x)**2 + y**2) for (x, y) in centers]
-    right_up = centers[distance_to_x.index(min(distance_to_x))]
+        # Find the right up center
+        distance_to_x = [math.sqrt((image.shape[1]-x)**2 + y**2) for (x, y) in centers]
+        self.right_up = centers[distance_to_x.index(min(distance_to_x))]
 
-    # Find the left down center
-    distance_to_y = [math.sqrt(x**2 + (image.shape[0]-y)**2) for (x, y) in centers]
-    left_down = centers[distance_to_y.index(min(distance_to_y))]
+        # Find the left down center
+        distance_to_y = [math.sqrt(x**2 + (image.shape[0]-y)**2) for (x, y) in centers]
+        self.left_down = centers[distance_to_y.index(min(distance_to_y))]
+
+        # Find the right down center
+        distance_to_xy = [math.sqrt((image.shape[1]-x)**2 + (image.shape[0]-y)**2) for (x, y) in centers]
+        self.right_down = centers[distance_to_xy.index(min(distance_to_xy))]
   
-    if DEBUG:
-        #Draw a gray circle on center of every reference
-        cv2.circle(image, (left_down), 5, (128, 128, 128), -1)
-        cv2.circle(image, (right_up), 5, (128, 128, 128), -1)
-        cv2.circle(image, (left_up), 5, (128, 128, 128), -1)
-        cv2.imshow('Image amb Referencies', image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        if DEBUG:
+            #Draw a gray circle on center of every reference
+            cv2.circle(imagec, (self.left_down), 5, (128, 128, 128), -1)
+            cv2.circle(imagec, (self.right_up), 5, (128, 128, 128), -1)
+            cv2.circle(imagec, (self.left_up), 5, (128, 128, 128), -1)
+            cv2.circle(imagec, (self.right_down), 5, (128, 128, 128), -1)
+            cv2.imshow('Image amb Referencies', imagec)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
-    # Calculate the field size
-    ymin = max(left_up[1], right_up[1]) + REDUCCIO_CAMP_REFERENCIES
-    ymax = left_down[1] - REDUCCIO_CAMP_REFERENCIES
-    xmin = max(left_up[0], left_down[0]) + REDUCCIO_CAMP_REFERENCIES
-    xmax = right_up[0] - REDUCCIO_CAMP_REFERENCIES
+        # Update image size
+        self.image_size = imagec.shape
+        
+        return
+    
+    def PixelXY2ReallXY(self, px, py):
+        # On camera, flower field is limited by 4 lines, left line, right line, up line and down line
+        # Every line is defined by its points (left_up, left_down, right_up, right_down)
+        # We know the real field size, so real position is proportional to the distance to the lines
+        # Get a line equation from the left_up to the right_up
+        m_up = (self.right_up[1] - self.left_up[1])/(self.right_up[0] - self.left_up[0])
+        n_up = self.left_up[1] - m_up*self.left_up[0]
 
-    # Calculate scale factors
-    scalex = MIDA_CAMP_X / (right_up[0] - left_up[0])
-    scaley = MIDA_CAMP_Y / (left_down[1] - left_up[1])
-    offsetx = left_up[0]
-    offsety = left_up[1]
+        # Get a line equation from the left_up to the left_down
+        m_left = (self.left_down[1] - self.left_up[1])/(self.left_down[0] - self.left_up[0])
+        n_left = self.left_up[1] - m_left*self.left_up[0]
 
-    if DEBUG:
-        # Draw a grey line for the field size
-        image[ymin, :] = 128
-        image[:, xmin] = 128
-        image[ymax, :] = 128
-        image[:, xmax] = 128    
-        # Display the image with borders
-        cv2.imshow('Image with borders', image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # Get a line equation from the right_up to the right_down
+        m_right = (self.right_down[1] - self.right_up[1])/(self.right_down[0] - self.right_up[0])
+        n_right = self.right_up[1] - m_right*self.right_up[0]
 
-    # Crop the image to the field size
-    image = image[(ymin+1):(ymax-1), (xmin+1):(xmax-1)] # +1 and -1 to avoid the grey lines
+        # Get a line equation from the left_down to the right_down
+        m_down = (self.right_down[1] - self.left_down[1])/(self.right_down[0] - self.left_down[0])
+        n_down = self.left_down[1] - m_down*self.left_down[0]
 
-    if DEBUG:
-        #Display the cropped image
-        cv2.imshow('Cropped image', image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # Distance from left line to the point
+        d_left = px - ((py - n_left) / m_left)
+        # Distance from right line to the point
+        d_right = ((py - n_right) / m_right) - px
+        # Scale to real world
+        x = (d_left * MIDA_CAMP_X) / (d_left + d_right)
 
-    # Return field size
-    return image
+        # Distance from up line to the point
+        d_up = py - ((m_up * px) + n_up)
+        # Distance from down line to the point
+        d_down = ((m_down * px) + n_down) - py
+        # Scale to real world
+        y = (d_up * MIDA_CAMP_Y) / (d_up + d_down)
+
+        return x, y
 
 # Function to perform global thresholding on an image
 # Input: frame: image to threshold
@@ -195,8 +238,12 @@ def ThresholdImatge(frame):
 # Output: dst: undistorted and cropped image
 def CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
     # Undistort the image
-    mapx, mapy = cv2.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w,h), 5)
-    dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
+    dst = cv2.undistort(image, cameraMatrix, dist, None, newCameraMatrix)
+    
+    # Undistort with Remapping
+    #mapx, mapy = cv2.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w,h), 5)
+    #dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
+    
     if DEBUG:
         # Display undistorted image
         cv2.imshow('Thresholded image', dst)
@@ -215,14 +262,14 @@ def CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
 
     return dst
 
-# Foto to follow a flower. It reads the camera, it corrects the image, thresholds it and finds the position of the flower
+# It reads the camera, it corrects the image, thresholds it and finds the position of the flower
 # It shows the image with a circle on the middle point and a line at the inclination of the flower
 # It also shows the x, y and angle of the flower
 # If the user presses 's' it saves the original, corrected, thresholded and position images
 # If the user presses 'esc' it closes the camera
-# Input: None
+# Input: Camp: FlowerField object already calibrated (ObteCamp executed)
 # Output: None
-def SegueixFlor():
+def SegueixFlor(CampFlors):
     # Load camera calibration data
     cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
     dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
@@ -252,12 +299,16 @@ def SegueixFlor():
         else:
             # Draw the position of the flower
             imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-            cv2.putText(imager, 'X: ' + str(Posicio[0]), (50, 80), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.putText(imager, 'Y: ' + str(Posicio[1]), (50, 160), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            PosicioReal = CampFlors.PixelXY2ReallXY(Posicio[0], Posicio[1])
+            cv2.putText(imager, 'X: ' + str(int(PosicioReal[0])), (50, 80), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(imager, 'Y: ' + str(int(PosicioReal[1])), (50, 160), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
             # Angle in str with just 2 decimals
             Ang = "{:.2f}".format((Angle*360)/6.28)
             cv2.putText(imager, 'Angle: ' + Ang, (50, 240), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
             cv2.imshow('Imatge de la càmera', imager)
+            if DEBUG:
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
         
         k = cv2.waitKey(5)
         if k == 27:
@@ -355,31 +406,13 @@ def DibuixaPosicioFlor(image, x, y, angle):
 
 #Main function
 def main():
-    global scalex, scaley, offsetx, offsety
+    
+    CampFlors = FlowerField()
 
-    SegueixFlor()
-    # Load camera calibration data
-    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
-    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
-
-    #cap = ActivaCamera()  
-     # Check if the camera opened successfully
-    #if not cap.isOpened():
-    #    print("Main: Could not open camera.")
-    #    exit()    
-
-    image = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240302_214441.jpg')
-    h,  w = image.shape[:2]
-    newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
-
-    imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
-    imaget = ThresholdImatge(imagec)
-    imageo = ObteCamp(imaget)
-    cv2.circle(imagec, (int(1240/scalex) + offsetx,int(670/scaley) + offsety), 10, (255, 255, 255), -1)
-    cv2.circle(imagec, (int(200/scalex) + offsetx,int(70/scaley) + offsety), 10, (255, 255, 255), -1)
-    cv2.circle(imagec, (int(170/scalex) + offsetx,int(1060/scaley) + offsety), 10, (255, 255, 255), -1)
-    cv2.circle(imagec, (int(1920/scalex) + offsetx,int(180/scaley) + offsety), 10, (255, 255, 255), -1)
-    cv2.circle(imagec, (int(2300/scalex) + offsetx,int(920/scaley) + offsety), 10, (255, 255, 255), -1)
+    CampFlors.ObteCamp()
+    SegueixFlor(CampFlors)
+    PosicioFlor, Distancia, Angle = TrobaPosicioFlor(imaget)
+    PosicioReal = CampFlors.PixelXY2ReallXY(PosicioFlor[0], PosicioFlor[1])
     
     cv2.imshow('Posició', imagec)
     cv2.waitKey(0)
