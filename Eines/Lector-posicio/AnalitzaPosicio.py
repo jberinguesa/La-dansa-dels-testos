@@ -25,12 +25,6 @@ def ObreImatge(image_path):
         print('ObreImatge: No s\'ha pogut obrir el fitxer', image_path)
         return
     
-    if DEBUG:
-        # Display the original image
-        cv2.imshow('Original image', image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
     return image 
 
 # Function to activate the camera
@@ -210,12 +204,7 @@ def ThresholdImatge(frame):
         # Convert image to grayscale
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    if DEBUG:
-        #Display read image
-        cv2.imshow('Imatge convertida a grisos', frame)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-     # Perform global thresholding
+    # Perform global thresholding
     
     _, img_thresh = cv2.threshold(frame, 250, 255, cv2.THRESH_BINARY)
 
@@ -246,7 +235,7 @@ def CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
     
     if DEBUG:
         # Display undistorted image
-        cv2.imshow('Thresholded image', dst)
+        cv2.imshow('Undistorted image', dst)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -411,13 +400,7 @@ def main():
 
     CampFlors.ObteCamp()
     SegueixFlor(CampFlors)
-    PosicioFlor, Distancia, Angle = TrobaPosicioFlor(imaget)
-    PosicioReal = CampFlors.PixelXY2ReallXY(PosicioFlor[0], PosicioFlor[1])
-    
-    cv2.imshow('Posició', imagec)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    
+     
     cap.release()
     cv2.destroyAllWindows()  
 
