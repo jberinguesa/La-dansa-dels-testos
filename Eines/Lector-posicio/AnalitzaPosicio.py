@@ -6,7 +6,7 @@ import pickle
 import time
 import os
 
-DEBUG = True
+DEBUG = False
 REDUCCIO_CAMP_REFERENCIES = 12
 MIDA_CAMP_X = 2360
 MIDA_CAMP_Y = 1310
@@ -252,11 +252,11 @@ def SegueixFlor():
         else:
             # Draw the position of the flower
             imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-            cv2.putText(imager, 'X: ' + str(Posicio[0]), (50, 60), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.putText(imager, 'Y: ' + str(Posicio[1]), (50, 90), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(imager, 'X: ' + str(Posicio[0]), (50, 80), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(imager, 'Y: ' + str(Posicio[1]), (50, 160), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
             # Angle in str with just 2 decimals
             Ang = "{:.2f}".format((Angle*360)/6.28)
-            cv2.putText(imager, 'Angle: ' + Ang, (50, 120), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(imager, 'Angle: ' + Ang, (50, 240), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
             cv2.imshow('Imatge de la càmera', imager)
         
         k = cv2.waitKey(5)
@@ -325,7 +325,10 @@ def TrobaPosicioFlor(image):
         cv2.destroyAllWindows()
     
     #Get the angle betwwen the line joining the two centers and the y axis
-    angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
+    try:
+        angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
+    except ZeroDivisionError:
+        angle = 0
     return middle_point, distance, angle
 
 # It draws a circle on the middle point and a line at the inclination of the flower
