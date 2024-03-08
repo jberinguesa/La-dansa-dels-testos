@@ -7,6 +7,7 @@ import time
 import os
 
 DEBUG = True
+LLEGEIX_CAMERA = True
 REDUCCIO_CAMP_REFERENCIES = 12
 MIDA_CAMP_X = 2360
 MIDA_CAMP_Y = 1310
@@ -30,31 +31,34 @@ def ObreImatge(image_path):
 # Function to activate the camera
 # Output: cap: VideoCapture object
 def ActivaCamera():
-    cap = cv2.VideoCapture('rtsp://admin:TAV1234a@192.168.1.116:554/11')
+    if LLEGEIX_CAMERA:
+        cap = cv2.VideoCapture('rtsp://admin:TAV1234a@192.168.1.116:554/11')
 
-    # Check if the camera opened successfully
-    if not cap.isOpened():
-        print("ActivaCamera: Could not open camera.")
-        exit()
-    return cap
-
-
+        # Check if the camera opened successfully
+        if not cap.isOpened():
+            print("ActivaCamera: Could not open camera.")
+            exit()
+        return cap
+    else:
+        return None
+    
 # Function to read a frame from the camera
 # Input: cap: VideoCapture object
 # Output: frame: frame read from the camera
 def LlegeixFotoCamera(cap):
-    ret, frame = cap.read()
-    #GuardaImatge(frame, 'Eines/Lector-posicio/Data/FotoCamp')
-    frame = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240307_183247.jpg')
+    if LLEGEIX_CAMERA:
+        ret, frame = cap.read()
+        #GuardaImatge(frame, 'Eines/Lector-posicio/Data/FotoCamp')
         
-    if not ret:
-        print("LlegeixFoto: Failed to capture frame.")
-    if DEBUG:
-        #Display read image
-        cv2.imshow('Imatge de la camera', frame)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-    
+        if not ret:
+            print("LlegeixFoto: Failed to capture frame.")
+        if DEBUG:
+            #Display read image
+            cv2.imshow('Imatge de la camera', frame)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+    else:
+        frame = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240307_183247.jpg')
     return frame
 
 # Function to save an image on file with a timestamp
@@ -89,10 +93,7 @@ class FlowerField:
         dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
 
         cap = ActivaCamera()  
-        # Check if the camera opened successfully
-        if not cap.isOpened():
-            print("ObteCamp: Could not open camera.")
-            exit() 
+        
         image = LlegeixFotoCamera(cap)   
         h,  w = image.shape[:2]
         newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
@@ -264,12 +265,8 @@ def SegueixFlor(CampFlors):
     dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
 
     cap = ActivaCamera()  
-     # Check if the camera opened successfully
-    if not cap.isOpened():
-        print("Main: Could not open camera.")
-        exit()    
-
-    while cap.isOpened():
+    
+    while True:
         image = LlegeixFotoCamera(cap)
                 
         h,  w = image.shape[:2]
