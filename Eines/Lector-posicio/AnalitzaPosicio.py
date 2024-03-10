@@ -8,6 +8,7 @@ import os
 
 DEBUG = True
 LLEGEIX_CAMERA = False
+CAMERA_USED = 'TPTEK' # Used camera. Possible values: 'TPTEK'
 
 MIDA_CAMP_X = 2360
 MIDA_CAMP_Y = 1310
@@ -52,13 +53,15 @@ def LlegeixFotoCamera(cap):
         
         if not ret:
             print("LlegeixFoto: Failed to capture frame.")
-        if DEBUG:
-            #Display read image
-            cv2.imshow('Imatge de la camera', frame)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
     else:
         frame = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240310_212033.jpg')
+    
+    if DEBUG:
+        #Display read image
+        cv2.imshow('Imatge de la camera', frame)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+     
     return frame
 
 # Function to save an image on file with a timestamp
@@ -121,7 +124,11 @@ def CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
 
     # crop the image
     x, y, w, h = roi
-    dst = dst[y:y+h, x:x+w] 
+
+    if CAMERA_USED:
+        dst = dst[y + 20:y+h, x:x+w] # We remove completely text from the camera
+    else:
+        dst = dst[y:y+h, x:x+w]
 
     if DEBUG:
         # Display cropped image
