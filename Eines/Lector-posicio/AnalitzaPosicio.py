@@ -108,7 +108,10 @@ def ThresholdImatge(frame):
 #        w: width of the image
 #        h: height of the image
 # Output: dst: undistorted and cropped image
-def CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
+def CorregeixImatge(image, cameraMatrix, dist):
+    h,  w = image.shape[:2]
+    newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+    
     # Undistort the image
     dst = cv2.undistort(image, cameraMatrix, dist, None, newCameraMatrix)
     
@@ -125,7 +128,7 @@ def CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
     # crop the image
     x, y, w, h = roi
 
-    if CAMERA_USED:
+    if CAMERA_USED == 'TPTEK':
         dst = dst[y + 20:y+h, x:x+w] # We remove completely text from the camera
     else:
         dst = dst[y:y+h, x:x+w]
@@ -167,10 +170,7 @@ class FlowerField:
         cap = ActivaCamera()  
         
         image = LlegeixFotoCamera(cap)   
-        h,  w = image.shape[:2]
-        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
-
-        imagec = CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imagec = CorregeixImatge(image, cameraMatrix, dist)
         imaget = ThresholdImatge(imagec)
         # Find contours
         contours, _ = cv2.findContours(imaget, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
@@ -186,6 +186,8 @@ class FlowerField:
                 # We print contour size if it is bigger than 0
                 if cv2.contourArea(contour) > 0:
                     print(cv2.contourArea(contour))
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
         # Filter contours by area, we keep only the big ones
         contours = [contour for contour in contours if cv2.contourArea(contour) > 100]
@@ -223,7 +225,7 @@ class FlowerField:
             cv2.circle(imagec, (self.right_up), 5, (128, 128, 128), -1)
             cv2.circle(imagec, (self.left_up), 5, (128, 128, 128), -1)
             cv2.circle(imagec, (self.right_down), 5, (128, 128, 128), -1)
-            cv2.imshow('Image amb Referencies', imagec)
+            cv2.imshow('Imatge amb Limits del camp', imagec)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
@@ -268,6 +270,20 @@ class FlowerField:
 
         return x, y
 
+
+# Function to adjust the limits of the field. It must be executed with DEBUG = True and it continuously shows the image of the field 
+def AjustaLimitsCamp(CampFlors):
+
+    if not DEBUG:
+        print('AjustaLimitsCamp: Només té sentit executar aquesta funció amb DEBUG = True')
+        return
+       
+    while True:
+        CampFlors.ObteCamp()
+        k = cv2.waitKey(0)
+        if k == 27:
+            break  
+
 # Function to find the position of one flower in the image
 # Just one flower is expected to be found
 # Input: image: image to analyze
@@ -293,7 +309,7 @@ def TrobaPosicioFlor(image):
         #Draw a gray circle on every center
         for center in centers:
             cv2.circle(image, center, 5, (128, 128, 128), -1)
-        cv2.imshow('Image amb References', image)
+        cv2.imshow('Imatge amb Contorns trobats', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -313,7 +329,7 @@ def TrobaPosicioFlor(image):
     if DEBUG:
         # Draw a gray circle on the middle point
         cv2.circle(image, middle_point, 5, (128, 128, 128), -1)
-        cv2.imshow('Image amb posició flor', image)
+        cv2.imshow('Imatge amb posicio flor', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
@@ -340,7 +356,7 @@ def DibuixaPosicioFlor(image, x, y, angle):
     cv2.line(image, (x, y), (x2, y2), (255, 255, 255), 2)
     
     if DEBUG:
-        cv2.imshow('Image amb dibuix posició flor', image)
+        cv2.imshow('Imatge amb dibuix posició flor', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
@@ -356,10 +372,7 @@ def SegueixFlor(CampFlors):
     while True:
         image = LlegeixFotoCamera(cap)
                 
-        h,  w = image.shape[:2]
-        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
-
-        imagec = CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imagec = CorregeixImatge(image, cameraMatrix, dist)
         imaget = ThresholdImatge(imagec)
         
         Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
@@ -368,7 +381,7 @@ def SegueixFlor(CampFlors):
         if (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
             # No flower found
             cv2.putText(imagec, 'No s\'ha trobat flor', (50, 60), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.imshow('Imatge de la càmera', imagec)
+            cv2.imshow('Imatge sense posicio', imagec)
         else:
             # Draw the position of the flower
             imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
@@ -378,10 +391,11 @@ def SegueixFlor(CampFlors):
             # Angle in str with just 2 decimals
             Ang = "{:.2f}".format((Angle*360)/6.28)
             cv2.putText(imager, 'Angle: ' + Ang, (50, 240), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.imshow('Imatge de la càmera', imager)
-            if DEBUG:
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
+            cv2.imshow('Imatge amb posicio', imager)
+        
+        if DEBUG:
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
         
         k = cv2.waitKey(5)
         if k == 27:
@@ -393,7 +407,8 @@ def SegueixFlor(CampFlors):
             if not (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
                 GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoPosicio')
     
-    cap.release()
+    if cap:
+        cap.release()
     cv2.destroyAllWindows()  
 
 
@@ -401,6 +416,7 @@ def SegueixFlor(CampFlors):
 def main():
     
     CampFlors = FlowerField()
+    #AjustaLimitsCamp(CampFlors)
     CampFlors.ObteCamp()
     SegueixFlor(CampFlors)
      
