@@ -7,12 +7,12 @@ import time
 import os
 
 DEBUG = True
-LLEGEIX_CAMERA = True
-REDUCCIO_CAMP_REFERENCIES = 12
+LLEGEIX_CAMERA = False
+
 MIDA_CAMP_X = 2360
 MIDA_CAMP_Y = 1310
 
-####### Lectura i gravació d'imatges #######
+################################################ Lectura i gravació d'imatges ################################################
 
 # Function to open an image file and perform global thresholding
 # Input: image_path: path to the image file
@@ -58,7 +58,7 @@ def LlegeixFotoCamera(cap):
             cv2.waitKey(0)
             cv2.destroyAllWindows()
     else:
-        frame = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240307_183247.jpg')
+        frame = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240310_212033.jpg')
     return frame
 
 # Function to save an image on file with a timestamp
@@ -74,7 +74,72 @@ def GuardaImatge(image, filename):
         return
     
 
-####### Millora de l'imatge #######
+################################################ Millora de l'imatge ################################################ 
+# Function to perform global thresholding on an image
+# Input: frame: image to threshold
+# Output: img_thresh: thresholded image
+def ThresholdImatge(frame):
+    # If the image is not in grayscale, convert it
+    if len(frame.shape) > 2:
+        # Convert image to grayscale
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Perform global thresholding
+    
+    _, img_thresh = cv2.threshold(frame, 250, 255, cv2.THRESH_BINARY)
+
+    if DEBUG:
+        # Display the thresholded image
+        cv2.imshow('Thresholded image', img_thresh)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    return img_thresh  
+
+# Function to correct the distortion of an image
+# Input: image: image to correct
+#        cameraMatrix: camera matrix
+#        dist: distortion coefficients
+#        newCameraMatrix: new camera matrix
+#        roi: region of interest
+#        w: width of the image
+#        h: height of the image
+# Output: dst: undistorted and cropped image
+def CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
+    # Undistort the image
+    dst = cv2.undistort(image, cameraMatrix, dist, None, newCameraMatrix)
+    
+    # Undistort with Remapping
+    #mapx, mapy = cv2.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w,h), 5)
+    #dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
+    
+    if DEBUG:
+        # Display undistorted image
+        cv2.imshow('Undistorted image', dst)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    # crop the image
+    x, y, w, h = roi
+    dst = dst[y:y+h, x:x+w] 
+
+    if DEBUG:
+        # Display cropped image
+        cv2.imshow('Cropped image', dst)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    return dst
+
+# It reads the camera, it corrects the image, thresholds it and finds the position of the flower
+# It shows the image with a circle on the middle point and a line at the inclination of the flower
+# It also shows the x, y and angle of the flower
+# If the user presses 's' it saves the original, corrected, thresholded and position images
+# If the user presses 'esc' it closes the camera
+# Input: Camp: FlowerField object already calibrated (ObteCamp executed)
+# Output: None
+
+################################################ Anàlisis inatge ################################################
 # Class which defines the field of the flowers
 class FlowerField:
     def __init__(self):
@@ -98,7 +163,7 @@ class FlowerField:
         h,  w = image.shape[:2]
         newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
 
-        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imagec = CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
         imaget = ThresholdImatge(imagec)
         # Find contours
         contours, _ = cv2.findContours(imaget, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE) 
@@ -116,7 +181,7 @@ class FlowerField:
                     print(cv2.contourArea(contour))
 
         # Filter contours by area, we keep only the big ones
-        contours = [contour for contour in contours if cv2.contourArea(contour) > 50]
+        contours = [contour for contour in contours if cv2.contourArea(contour) > 100]
 
         # Find the 4 contours delimiting the field
         # Find centers
@@ -127,7 +192,7 @@ class FlowerField:
                 cx = int(M['m10']/M['m00'])
                 cy = int(M['m01']/M['m00'])
                 centers.append((cx, cy))
-                cv2.circle(image, (cx, cy), 5, (255, 0, 0), -1)
+                cv2.circle(image, (cx, cy), 5, (128, 128, 128), -1)
 
         # Find the left up center 
         distance_to_0 = [math.sqrt(x**2 + y**2) for (x, y) in centers]
@@ -196,121 +261,6 @@ class FlowerField:
 
         return x, y
 
-# Function to perform global thresholding on an image
-# Input: frame: image to threshold
-# Output: img_thresh: thresholded image
-def ThresholdImatge(frame):
-    # If the image is not in grayscale, convert it
-    if len(frame.shape) > 2:
-        # Convert image to grayscale
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Perform global thresholding
-    
-    _, img_thresh = cv2.threshold(frame, 250, 255, cv2.THRESH_BINARY)
-
-    if DEBUG:
-        # Display the thresholded image
-        cv2.imshow('Thresholded image', img_thresh)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-    return img_thresh  
-
-# Function to correct the distortion of an image
-# Input: image: image to correct
-#        cameraMatrix: camera matrix
-#        dist: distortion coefficients
-#        newCameraMatrix: new camera matrix
-#        roi: region of interest
-#        w: width of the image
-#        h: height of the image
-# Output: dst: undistorted and cropped image
-def CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h):
-    # Undistort the image
-    dst = cv2.undistort(image, cameraMatrix, dist, None, newCameraMatrix)
-    
-    # Undistort with Remapping
-    #mapx, mapy = cv2.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w,h), 5)
-    #dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
-    
-    if DEBUG:
-        # Display undistorted image
-        cv2.imshow('Undistorted image', dst)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-    # crop the image
-    x, y, w, h = roi
-    dst = dst[y:y+h, x:x+w] 
-
-    if DEBUG:
-        # Display cropped image
-        cv2.imshow('Cropped image', dst)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-    return dst
-
-# It reads the camera, it corrects the image, thresholds it and finds the position of the flower
-# It shows the image with a circle on the middle point and a line at the inclination of the flower
-# It also shows the x, y and angle of the flower
-# If the user presses 's' it saves the original, corrected, thresholded and position images
-# If the user presses 'esc' it closes the camera
-# Input: Camp: FlowerField object already calibrated (ObteCamp executed)
-# Output: None
-def SegueixFlor(CampFlors):
-    # Load camera calibration data
-    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
-    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
-
-    cap = ActivaCamera()  
-    
-    while True:
-        image = LlegeixFotoCamera(cap)
-                
-        h,  w = image.shape[:2]
-        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
-
-        imagec = CorretgeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
-        imaget = ThresholdImatge(imagec)
-        
-        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
-
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        if (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
-            # No flower found
-            cv2.putText(imagec, 'No s\'ha trobat flor', (50, 60), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.imshow('Imatge de la càmera', imagec)
-        else:
-            # Draw the position of the flower
-            imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
-            PosicioReal = CampFlors.PixelXY2ReallXY(Posicio[0], Posicio[1])
-            cv2.putText(imager, 'X: ' + str(int(PosicioReal[0])), (50, 80), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.putText(imager, 'Y: ' + str(int(PosicioReal[1])), (50, 160), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            # Angle in str with just 2 decimals
-            Ang = "{:.2f}".format((Angle*360)/6.28)
-            cv2.putText(imager, 'Angle: ' + Ang, (50, 240), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
-            cv2.imshow('Imatge de la càmera', imager)
-            if DEBUG:
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-        
-        k = cv2.waitKey(5)
-        if k == 27:
-            break
-        elif k == ord('s'):
-            GuardaImatge(image, 'Eines/Lector-posicio/Data/FotoOriginal')
-            GuardaImatge(imagec, 'Eines/Lector-posicio/Data/FotoCorregida')
-            GuardaImatge(imaget, 'Eines/Lector-posicio/Data/FotoThreshold') 
-            if not (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
-                GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoPosicio')
-    
-    cap.release()
-    cv2.destroyAllWindows()  
-
-####### Anàlisis imatge #######
-
 # Function to find the position of one flower in the image
 # Just one flower is expected to be found
 # Input: image: image to analyze
@@ -321,7 +271,7 @@ def TrobaPosicioFlor(image):
     contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
 
     # Filter contours by area, we keep only the big ones
-    contours = [contour for contour in contours if cv2.contourArea(contour) > 300]
+    contours = [contour for contour in contours if cv2.contourArea(contour) > 100]
 
     # Find centers
     centers = []
@@ -331,8 +281,7 @@ def TrobaPosicioFlor(image):
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
             centers.append((cx, cy))
-            cv2.circle(image, (cx, cy), 10, (255, 0, 0), -1)
-
+    
     if DEBUG:
         #Draw a gray circle on every center
         for center in centers:
@@ -345,7 +294,7 @@ def TrobaPosicioFlor(image):
     if len(centers) > 2 or len(centers) < 2:
         print('TrobaPosicioFlor: S\'han trobat més de 2 referències')
         # Save image 
-        GuardaImatge(image, 'Eines/Lector-posicio/Data/Output/ErrorReferences')
+        #GuardaImatge(image, 'Eines/Lector-posicio/Data/ErrorReferences')
         return (0,0),0,0
     
     # Calculate the distance between the two centers
@@ -390,17 +339,65 @@ def DibuixaPosicioFlor(image, x, y, angle):
     
     return image
 
-#Main function
+def SegueixFlor(CampFlors):
+    # Load camera calibration data
+    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+
+    cap = ActivaCamera()  
+    
+    while True:
+        image = LlegeixFotoCamera(cap)
+                
+        h,  w = image.shape[:2]
+        newCameraMatrix, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+
+        imagec = CorregeixImatge(image, cameraMatrix, dist, newCameraMatrix, roi, w, h)
+        imaget = ThresholdImatge(imagec)
+        
+        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        if (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
+            # No flower found
+            cv2.putText(imagec, 'No s\'ha trobat flor', (50, 60), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.imshow('Imatge de la càmera', imagec)
+        else:
+            # Draw the position of the flower
+            imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
+            PosicioReal = CampFlors.PixelXY2ReallXY(Posicio[0], Posicio[1])
+            cv2.putText(imager, 'X: ' + str(int(PosicioReal[0])), (50, 80), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(imager, 'Y: ' + str(int(PosicioReal[1])), (50, 160), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            # Angle in str with just 2 decimals
+            Ang = "{:.2f}".format((Angle*360)/6.28)
+            cv2.putText(imager, 'Angle: ' + Ang, (50, 240), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.imshow('Imatge de la càmera', imager)
+            if DEBUG:
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+        
+        k = cv2.waitKey(5)
+        if k == 27:
+            break
+        elif k == ord('s'):
+            GuardaImatge(image, 'Eines/Lector-posicio/Data/FotoOriginal')
+            GuardaImatge(imagec, 'Eines/Lector-posicio/Data/FotoCorregida')
+            GuardaImatge(imaget, 'Eines/Lector-posicio/Data/FotoThreshold') 
+            if not (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
+                GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoPosicio')
+    
+    cap.release()
+    cv2.destroyAllWindows()  
+
+
+################################################ Main function ################################################
 def main():
     
     CampFlors = FlowerField()
-
     CampFlors.ObteCamp()
     SegueixFlor(CampFlors)
      
    
-
-
 if __name__ == "__main__":
     main()
 
