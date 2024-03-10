@@ -270,8 +270,9 @@ class FlowerField:
 
         return x, y
 
-
 # Function to adjust the limits of the field. It must be executed with DEBUG = True and it continuously shows the image of the field 
+# Input: CampFlors: FlowerField object
+# Output: None
 def AjustaLimitsCamp(CampFlors):
 
     if not DEBUG:
@@ -362,6 +363,9 @@ def DibuixaPosicioFlor(image, x, y, angle):
     
     return image
 
+# It follows the flower and it shows its position and angle
+# Input: CampFlors: FlowerField object already calibrated (ObteCamp executed)
+# Output: None
 def SegueixFlor(CampFlors):
     # Load camera calibration data
     cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
