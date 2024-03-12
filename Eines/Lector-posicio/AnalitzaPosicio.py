@@ -9,6 +9,7 @@ import os
 DEBUG = True
 LLEGEIX_CAMERA = False
 CAMERA_USED = 'TPTEK' # Used camera. Possible values: 'TPTEK'
+REDUCCIO_REFERENCIES = 0 # Pixels to reduce the field limits for avoiding the external references
 
 MIDA_CAMP_X = 2360
 MIDA_CAMP_Y = 1310
@@ -141,14 +142,6 @@ def CorregeixImatge(image, cameraMatrix, dist):
 
     return dst
 
-# It reads the camera, it corrects the image, thresholds it and finds the position of the flower
-# It shows the image with a circle on the middle point and a line at the inclination of the flower
-# It also shows the x, y and angle of the flower
-# If the user presses 's' it saves the original, corrected, thresholded and position images
-# If the user presses 'esc' it closes the camera
-# Input: Camp: FlowerField object already calibrated (ObteCamp executed)
-# Output: None
-
 ################################################ Anàlisis inatge ################################################
 # Class which defines the field of the flowers
 class FlowerField:
@@ -270,7 +263,7 @@ class FlowerField:
 
         return x, y
 
-# Function to adjust the limits of the field. It must be executed with DEBUG = True and it continuously shows the image of the field 
+# Function to help to adjust the limits of the field. It must be executed with DEBUG = True and it continuously shows the image of the field 
 # Input: CampFlors: FlowerField object
 # Output: None
 def AjustaLimitsCamp(CampFlors):
@@ -288,11 +281,21 @@ def AjustaLimitsCamp(CampFlors):
 # Function to find the position of one flower in the image
 # Just one flower is expected to be found
 # Input: image: image to analyze
+#        CampFlors: FlowerField object already calibrated (ObteCamp executed)
 # Output: middle_point: coordinates of the middle point between the two centers
 #                       (0,0),0,0 if flower not found
-def TrobaPosicioFlor(image):
+def TrobaPosicioFlor(image, CampFlors):
+    # Reduce the field limits for avoiding the external references
+    xmin = max(CampFlors.left_up[0], CampFlors.left_down[0]) + REDUCCIO_REFERENCIES
+    xmax = min(CampFlors.right_up[0], CampFlors.right_down[0]) - REDUCCIO_REFERENCIES
+    ymin = max(CampFlors.left_up[1], CampFlors.right_up[1]) + REDUCCIO_REFERENCIES
+    ymax = min(CampFlors.left_down[1], CampFlors.right_down[1]) - REDUCCIO_REFERENCIES
+
+    # Crop the image
+    imager = image[ymin:ymax, xmin:xmax]
+
     # Find contours
-    contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
+    contours, _ = cv2.findContours(imager, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) 
 
     # Filter contours by area, we keep only the big ones
     contours = [contour for contour in contours if cv2.contourArea(contour) > 100]
@@ -309,8 +312,8 @@ def TrobaPosicioFlor(image):
     if DEBUG:
         #Draw a gray circle on every center
         for center in centers:
-            cv2.circle(image, center, 5, (128, 128, 128), -1)
-        cv2.imshow('Imatge amb Contorns trobats', image)
+            cv2.circle(imager, center, 5, (128, 128, 128), -1)
+        cv2.imshow('Imatge amb Contorns trobats', imager)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -329,8 +332,8 @@ def TrobaPosicioFlor(image):
 
     if DEBUG:
         # Draw a gray circle on the middle point
-        cv2.circle(image, middle_point, 5, (128, 128, 128), -1)
-        cv2.imshow('Imatge amb posicio flor', image)
+        cv2.circle(imager, middle_point, 5, (128, 128, 128), -1)
+        cv2.imshow('Imatge amb posicio flor', imager)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
@@ -339,6 +342,10 @@ def TrobaPosicioFlor(image):
         angle = math.atan((centers[1][0]-centers[0][0])/(centers[1][1]-centers[0][1]))
     except ZeroDivisionError:
         angle = 0
+    
+    # We add what we cropped at the begginning for removing the external references
+    middle_point = (middle_point[0] + xmin, middle_point[1] + ymin)
+
     return middle_point, distance, angle
 
 # It draws a circle on the middle point and a line at the inclination of the flower
@@ -357,14 +364,18 @@ def DibuixaPosicioFlor(image, x, y, angle):
     cv2.line(image, (x, y), (x2, y2), (255, 255, 255), 2)
     
     if DEBUG:
-        cv2.imshow('Imatge amb dibuix posició flor', image)
+        cv2.imshow('Imatge amb dibuix posicio flor', image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
     return image
 
-# It follows the flower and it shows its position and angle
-# Input: CampFlors: FlowerField object already calibrated (ObteCamp executed)
+# It reads the camera, it corrects the image, thresholds it and finds the position of the flower
+# It shows the image with a circle on the middle point and a line at the inclination of the flower
+# It also shows the x, y and angle of the flower
+# If the user presses 's' it saves the original, corrected, thresholded and position images
+# If the user presses 'esc' it closes the camera
+# Input: Camp: FlowerField object already calibrated (ObteCamp executed)
 # Output: None
 def SegueixFlor(CampFlors):
     # Load camera calibration data
@@ -379,7 +390,7 @@ def SegueixFlor(CampFlors):
         imagec = CorregeixImatge(image, cameraMatrix, dist)
         imaget = ThresholdImatge(imagec)
         
-        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget)
+        Posicio, Distancia, Angle = TrobaPosicioFlor(imaget, CampFlors)
 
         font = cv2.FONT_HERSHEY_SIMPLEX
         if (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
