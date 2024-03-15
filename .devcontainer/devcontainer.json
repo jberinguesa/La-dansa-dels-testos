@@ -2,7 +2,7 @@
   // Configuració del codespace per "La dansa dels testos"
   "name": "Codespace 'La dansa dels testos'",
   // Use the base codespace image
-  "image": "mcr.microsoft.com/vscode/devcontainers/python:0-3.11",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
   "remoteUser": "codespace",
   "overrideCommand": false,
   // Add the IDs of extensions you want installed when the container is created.
