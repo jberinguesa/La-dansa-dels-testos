@@ -6,12 +6,7 @@
         "context": "."
     },
     "name": "Codespace per La dansa dels testos - Python",
-    // Per poder accedir a la pantalla
-    "runArgs": [
-        "--network",
-        "host"
-    ],
-	// Configure tool-specific properties.
+    // Configure tool-specific properties.
     "customizations": {
         "vscode": {
             "extensions": [
