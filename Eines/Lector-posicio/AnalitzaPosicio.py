@@ -1,5 +1,5 @@
-import cv2
 import datetime
+import cv2
 import math
 import numpy as np
 import pickle   
@@ -282,7 +282,7 @@ def AjustaLimitsCamp(CampFlors):
 # Just one flower is expected to be found
 # Input: image: image to analyze
 #        CampFlors: FlowerField object already calibrated (ObteCamp executed)
-# Output: middle_point: coordinates of the middle point between the two centers
+# Output: middle_point: screen coordinates of the middle point between the two centers
 #                       (0,0),0,0 if flower not found
 def TrobaPosicioFlor(image, CampFlors):
     # Reduce the field limits for avoiding the external references
@@ -350,8 +350,8 @@ def TrobaPosicioFlor(image, CampFlors):
 
 # It draws a circle on the middle point and a line at the inclination of the flower
 # Input: image: image to draw on
-#        x: x coordinate of the middle point
-#        y: y coordinate of the middle point
+#        x: x screen coordinate of the middle point
+#        y: y screen coordinate of the middle point
 #        angle: inclination of the flower
 # Output: image: image with the circle and the line drawn
 def DibuixaPosicioFlor(image, x, y, angle):
@@ -370,6 +370,7 @@ def DibuixaPosicioFlor(image, x, y, angle):
     
     return image
 
+# For following the flower
 # It reads the camera, it corrects the image, thresholds it and finds the position of the flower
 # It shows the image with a circle on the middle point and a line at the inclination of the flower
 # It also shows the x, y and angle of the flower
@@ -426,6 +427,72 @@ def SegueixFlor(CampFlors):
         cap.release()
     cv2.destroyAllWindows()  
 
+# For moving a circle on the screen using keyboard and check which is the real calculated position, to see if it matches with the real position
+# Input: CampFlors: FlowerField object already calibrated (ObteCamp executed)
+# Output: None (screen)
+def ComprovaPosicio(CampFlors):
+    # Load camera calibration data
+    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+
+    cap = ActivaCamera()  
+    
+    Posicio = (100,1000)
+    Angle = 0
+
+    while True:
+        image = LlegeixFotoCamera(cap)
+                
+        imagec = CorregeixImatge(image, cameraMatrix, dist)
+        
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        # Draw the position of the flower
+        imager = DibuixaPosicioFlor(imagec, Posicio[0], Posicio[1], Angle)
+        PosicioReal = CampFlors.PixelXY2ReallXY(Posicio[0], Posicio[1])
+        cv2.putText(imager, 'X: ' + str(int(PosicioReal[0])), (50, 80), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(imager, 'Y: ' + str(int(PosicioReal[1])), (50, 160), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+        # Angle in str with just 2 decimals
+        Ang = "{:.2f}".format((Angle*360)/6.28)
+        cv2.putText(imager, 'Angle: ' + Ang, (50, 240), font, 3, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.imshow('Imatge amb posicio', imager)
+        
+        if DEBUG:
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        
+        k = cv2.waitKey(5)
+        # Move the position of the flower
+        # s: right
+        # a: left
+        # w: up
+        # z: down
+        # k: right 10 pixels
+        # j: left 10 pixels
+        # i: up 10 pixels
+        # m: down 10 pixels
+        if k == 27:
+            break
+        elif k == ord('s'):
+            Posicio = (Posicio[0]+1, Posicio[1])
+        elif k == ord('a'):
+            Posicio = (Posicio[0]-1, Posicio[1])
+        elif k == ord('w'):
+            Posicio = (Posicio[0], Posicio[1]-1)
+        elif k == ord('z'):
+            Posicio = (Posicio[0], Posicio[1]+1)
+        elif k == ord('k'):
+            Posicio = (Posicio[0]+10, Posicio[1])
+        elif k == ord('j'):
+            Posicio = (Posicio[0]-10, Posicio[1])
+        elif k == ord('i'):
+            Posicio = (Posicio[0], Posicio[1]-10)
+        elif k == ord('m'):
+            Posicio = (Posicio[0], Posicio[1]+10)
+                
+    
+    if cap:
+        cap.release()
+    cv2.destroyAllWindows()  
 
 ################################################ Main function ################################################
 def main():
@@ -433,7 +500,8 @@ def main():
     CampFlors = FlowerField()
     #AjustaLimitsCamp(CampFlors)
     CampFlors.ObteCamp()
-    SegueixFlor(CampFlors)
+    #SegueixFlor(CampFlors)
+    ComprovaPosicio(CampFlors)
      
    
 if __name__ == "__main__":
