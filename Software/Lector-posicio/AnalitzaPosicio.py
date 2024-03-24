@@ -50,12 +50,12 @@ def ActivaCamera():
 def LlegeixFotoCamera(cap):
     if LLEGEIX_CAMERA:
         ret, frame = cap.read()
-        #GuardaImatge(frame, 'Eines/Lector-posicio/Data/FotoCamp')
+        #GuardaImatge(frame, 'Software/Lector-posicio/Data/FotoCamp')
         
         if not ret:
             print("LlegeixFoto: Failed to capture frame.")
     else:
-        frame = ObreImatge('Eines/Lector-posicio/Data/FotoCamp_20240310_212033.jpg')
+        frame = ObreImatge('Software/Lector-posicio/Data/FotoCamp_20240310_212033.jpg')
     
     if DEBUG:
         #Display read image
@@ -157,8 +157,8 @@ class FlowerField:
     #        image_thresh: thresholded image
     def ObteCamp(self):
         # Load camera calibration data
-        cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
-        dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+        cameraMatrix = pickle.load(open('Software/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+        dist = pickle.load(open('Software/Calibracio-camera/dist.pkl', 'rb'))
 
         cap = ActivaCamera()  
         
@@ -321,7 +321,7 @@ def TrobaPosicioFlor(image, CampFlors):
     if len(centers) > 2 or len(centers) < 2:
         print('TrobaPosicioFlor: S\'han trobat més de 2 referències')
         # Save image 
-        #GuardaImatge(image, 'Eines/Lector-posicio/Data/ErrorReferences')
+        #GuardaImatge(image, 'Software/Lector-posicio/Data/ErrorReferences')
         return (0,0),0,0
     
     # Calculate the distance between the two centers
@@ -380,8 +380,8 @@ def DibuixaPosicioFlor(image, x, y, angle):
 # Output: None
 def SegueixFlor(CampFlors):
     # Load camera calibration data
-    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
-    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+    cameraMatrix = pickle.load(open('Software/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+    dist = pickle.load(open('Software/Calibracio-camera/dist.pkl', 'rb'))
 
     cap = ActivaCamera()  
     
@@ -417,11 +417,11 @@ def SegueixFlor(CampFlors):
         if k == 27:
             break
         elif k == ord('s'):
-            GuardaImatge(image, 'Eines/Lector-posicio/Data/FotoOriginal')
-            GuardaImatge(imagec, 'Eines/Lector-posicio/Data/FotoCorregida')
-            GuardaImatge(imaget, 'Eines/Lector-posicio/Data/FotoThreshold') 
+            GuardaImatge(image, 'Software/Lector-posicio/Data/FotoOriginal')
+            GuardaImatge(imagec, 'Software/Lector-posicio/Data/FotoCorregida')
+            GuardaImatge(imaget, 'Software/Lector-posicio/Data/FotoThreshold') 
             if not (Posicio[0] == 0 and Posicio[1] == 0 and Distancia == 0 and Angle == 0):
-                GuardaImatge(imager, 'Eines/Lector-posicio/Data/FotoPosicio')
+                GuardaImatge(imager, 'Software/Lector-posicio/Data/FotoPosicio')
     
     if cap:
         cap.release()
@@ -432,8 +432,8 @@ def SegueixFlor(CampFlors):
 # Output: None (screen)
 def ComprovaPosicio(CampFlors):
     # Load camera calibration data
-    cameraMatrix = pickle.load(open('Eines/Calibracio-camera/cameraMatrix.pkl', 'rb'))
-    dist = pickle.load(open('Eines/Calibracio-camera/dist.pkl', 'rb'))
+    cameraMatrix = pickle.load(open('Software/Calibracio-camera/cameraMatrix.pkl', 'rb'))
+    dist = pickle.load(open('Software/Calibracio-camera/dist.pkl', 'rb'))
 
     cap = ActivaCamera()  
     
