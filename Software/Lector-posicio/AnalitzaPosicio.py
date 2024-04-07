@@ -7,7 +7,7 @@ import time
 import os
 
 DEBUG = False
-LLEGEIX_CAMERA = False
+LLEGEIX_CAMERA = True
 CAMERA_USED = 'TPTEK' # Used camera. Possible values: 'TPTEK'
 REDUCCIO_REFERENCIES = 0 # Pixels to reduce the field limits for avoiding the external references
 
@@ -488,6 +488,9 @@ def ComprovaPosicio(CampFlors):
             Posicio = (Posicio[0], Posicio[1]-10)
         elif k == ord('m'):
             Posicio = (Posicio[0], Posicio[1]+10)
+        elif k == ord('g'):
+            GuardaImatge(imager, 'Software/Lector-posicio/Data/FotoPosicio')
+ 
                 
     
     if cap:
