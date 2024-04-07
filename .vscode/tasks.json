@@ -16,6 +16,7 @@
             "label": "Activate venv",
             "type": "shell",
             "command": "source env311/bin/activate &&pip install --upgrade pip && pip install -r .vscode/requirements.txt",
+            "dependsOn": "Create venv",
             "presentation": {
                 "reveal": "always"
             },
