@@ -9,7 +9,7 @@ import os
 DEBUG = False
 LLEGEIX_CAMERA = True
 CAMERA_USED = 'TPTEK' # Used camera. Possible values: 'TPTEK'
-REDUCCIO_REFERENCIES = 0 # Pixels to reduce the field limits for avoiding the external references
+REDUCCIO_REFERENCIES = 10 # Pixels to reduce the field limits for avoiding the external references
 
 MIDA_CAMP_X = 2360
 MIDA_CAMP_Y = 1310
@@ -183,7 +183,7 @@ class FlowerField:
             cv2.destroyAllWindows()
 
         # Filter contours by area, we keep only the big ones
-        contours = [contour for contour in contours if cv2.contourArea(contour) > 100]
+        contours = [contour for contour in contours if cv2.contourArea(contour) > 90]
 
         # Find the 4 contours delimiting the field
         # Find centers
@@ -503,8 +503,8 @@ def main():
     CampFlors = FlowerField()
     #AjustaLimitsCamp(CampFlors)
     CampFlors.ObteCamp()
-    #SegueixFlor(CampFlors)
-    ComprovaPosicio(CampFlors)
+    SegueixFlor(CampFlors)
+    #ComprovaPosicio(CampFlors)
      
    
 if __name__ == "__main__":
