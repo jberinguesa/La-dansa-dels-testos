@@ -6,8 +6,8 @@ import pickle
 import time
 import os
 
-DEBUG = False
-LLEGEIX_CAMERA = True
+DEBUG = True
+LLEGEIX_CAMERA = False
 CAMERA_USED = 'TPTEK' # Used camera. Possible values: 'TPTEK'
 REDUCCIO_REFERENCIES = 10 # Pixels to reduce the field limits for avoiding the external references
 

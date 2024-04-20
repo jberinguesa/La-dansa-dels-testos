@@ -1,11 +1,33 @@
 {
     // Configuració del codespace per "La dansa dels testos"
     // Fitxer amb les intruccions per crear el container i el directori de treball
+    // Aquest programa accedeix a la pantalla i un cop creat el contenidor, no té accés a la pantalla. 
+    
+    // MacOS: Per que el contenidor pugui tenir accés a la pantalla
+    // 1. Instal·lar XQuartz (https://www.xquartz.org/)
+    // 2. Executar: open -a XQuartz
+    // 3. Des del terminal fora del contenidor 
+    //       - Donar permís a localhost. Executar: xhost +localhost
+    //       - Trobar el nom del contenidor: Executar: docker images
+    //       - Agafar el nom sota la columna "REPOSITORY"
+    //       - Executar: docker run -it -e DISPLAY=host.docker.internal:0 "vsc-la-dansa-dels-testos-5fa68bcba1b96e0e4c8643c41b637ecdf0bba68bc6d782f4d70fa773909a2a6a"
+    // 4. Un cop acabat, és recomanable executar xhost -localhost per tancar el port
+    
+    // Windows: Per que el contenidor pugui tenir accés a la pantalla (no provat)
+    // 1. Instal·lar VcXsrv (https://sourceforge.net/projects/vcxsrv/)
+    // 2. Executar: XLaunch
+    // 1. Des del terminal fora del contenidor 
+    //       - set DISPLAY=host.docker.internal:0.0
+    //       - Trobar el nom del contenidor: Executar: docker images
+    //       - Agafar el nom sota la columna "REPOSITORY"
+    //       - Executar: docker run -it -e DISPLAY=%DISPLAY% "vsc-la-dansa-dels-testos-5fa68bcba1b96e0e4c8643c41b637ecdf0bba68bc6d782f4d70fa773909a2a6a"
+    // 3. Un cop acabat, és recomanable executar xhost -localhost per tancar el port
+
     "build": {
         "dockerfile": "./Dockerfile",
         "context": "."
     },
-    "name": "Codespace per La dansa dels testos - Python",
+    "name": "La dansa dels testos - Python",
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
@@ -14,9 +36,21 @@
                 "ms-python.python",
                 "ms-vscode-remote.remote-containers"
             ]
-        }
-    },
-    "settings": {
-        "git.autofetch": true
+        },
+        "settings": {
+            "terminal.integrated.shell.linux": "/bin/bash",
+            "python.pythonPath": "/usr/local/bin/python",
+            "python.linting.enabled": true,
+            "python.linting.pylintEnabled": true,
+            "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
+            "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+            "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
+            "python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
+            "python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
+            "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
+            "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
+            "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
+            "git.autofetch": true
+        },
     },
 }
