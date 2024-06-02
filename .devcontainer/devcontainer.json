@@ -34,7 +34,9 @@
             "extensions": [
                 "GitHub.copilot",
                 "ms-python.python",
-                "ms-vscode-remote.remote-containers"
+                "ms-vscode-remote.remote-containers",
+                "ms-vscode-remote.remote-ssh"
+        ]
             ]
         },
         "settings": {
