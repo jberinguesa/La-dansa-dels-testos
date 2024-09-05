@@ -34,3 +34,8 @@
   - La imatge arriba amb 2 segons de retard
   - La imatge es llegeix de la càmera en 3 ms
   - La imatge es passa a grisos en 6 ms
+
+Problema resolt! El retard en la lectura no sé exactament per què és però deu ser per la generació d'algun buffer o alguna cosa similar. Passa amb la primera lectura d'imatge. Si es llegeixen vàries imatges llavors el retard és d'uns 100ms.
+
+<img width="496" alt="image" src="https://github.com/user-attachments/assets/9db8aa7e-5c48-44bd-8f1c-5932521015f4">
+
