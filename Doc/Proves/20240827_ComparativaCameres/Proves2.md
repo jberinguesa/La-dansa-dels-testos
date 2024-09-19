@@ -17,3 +17,9 @@
 200 ms de retard de la imatge
 10 ms a llegir-la
 
+
+## Webcam Josep:
+<img width="568" alt="image" src="https://github.com/user-attachments/assets/bb8efe85-f10f-4ae4-b4f7-4e1e2606a141">
+
+100-200ms de retard de la imatge
+20 ms a llegir-la
