@@ -11,6 +11,9 @@
     
   Comparant amb l'hora que es veu a la imatge veig el retard que m'arriba de la imatge.
 
-## TP-TEK:
+## Webcam Anivia:
+<img width="684" alt="image" src="https://github.com/user-attachments/assets/744c3319-1644-4fac-bf17-e5cfceabf983">
 
-  
+200 ms de retard de la imatge
+10 ms a llegir-la
+
