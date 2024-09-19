@@ -23,3 +23,6 @@
 
 100-200ms de retard de la imatge
 20 ms a llegir-la
+
+## TP-TEK:
+Comsi tingués un buffer, molt retard i variable
